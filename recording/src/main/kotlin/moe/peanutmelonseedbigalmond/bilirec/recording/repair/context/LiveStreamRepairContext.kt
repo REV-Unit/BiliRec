@@ -1,0 +1,186 @@
+package moe.peanutmelonseedbigalmond.bilirec.recording.repair.context
+
+import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.FrameType
+import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
+import moe.peanutmelonseedbigalmond.bilirec.flv.reader.FlvTagReader
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.ScriptData
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.VideoData
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.*
+import moe.peanutmelonseedbigalmond.bilirec.flv.writer.FlvTagWriter
+import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
+import moe.peanutmelonseedbigalmond.bilirec.recording.Room
+import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
+import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExitedEvent
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.BaseFlvTagProcessChain
+import org.greenrobot.eventbus.EventBus
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.util.*
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.concurrent.thread
+import kotlin.math.log
+
+class LiveStreamRepairContext(
+    private val inputStream: InputStream,
+    private val room: Room,
+    private val outputFileNamePrefix: String,
+) : AutoCloseable {
+    private val logger = LoggingFactory.getLogger(room.roomConfig.roomId, this)
+    private val writeLock = Object()
+
+    @Volatile
+    private var flvTagReader: FlvTagReader? = null
+
+    @Volatile
+    private var previousScriptTagBinaryLength = AtomicLong(0)
+
+    @Volatile
+    private lateinit var previousScriptTag: Tag
+
+    @Volatile
+    private var splitRequired = false
+
+    @Volatile
+    private var splitCount = 0
+
+    @Volatile
+    private var flvWriter: FlvTagWriter? = null
+
+    private lateinit var work: WorkingRunnable
+
+    private lateinit var processChain: BaseFlvTagProcessChain
+
+    private inner class WorkingRunnable : Runnable {
+        @Volatile
+        private var cancelled = false
+        override fun run() {
+            while (!cancelled) {
+                try {
+                    val tag = flvTagReader?.readNextTag() ?: break
+                    val newTag = processChain.proceed(tag)
+                    writeTag(newTag)
+                } catch (e: Exception) {
+                    EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
+                    cancel()
+                }
+            }
+            EventBus.getDefault().post(RecordingThreadExitedEvent(this@LiveStreamRepairContext.room))
+        }
+
+        fun cancel() {
+            cancelled = true
+        }
+    }
+
+    fun startAsync() {
+        flvWriter = FlvTagWriter("$outputFileNamePrefix.flv")
+        this.flvTagReader = FlvTagReader(inputStream)
+        processChain = BaseFlvTagProcessChain
+            .addChainNode(TagTimestampProcessChain(this.logger))
+            .addChainNode(TagDataProcessChain(this.logger))
+            .build()
+        thread(name = "LiveStreamRepairContext - RoomId: ${room.roomConfig.roomId}") {
+            work = WorkingRunnable()
+            work.run()
+        }
+    }
+
+    override fun close() {
+        synchronized(writeLock) {
+            if (this::work.isInitialized) {
+                work.cancel()
+            }
+            this.flvTagReader?.close()
+            this.flvTagReader = null
+            this.flvWriter?.close()
+            this.flvWriter = null
+        }
+    }
+
+    private fun writeTag(tag: Tag?) {
+        if (tag == null) return
+        synchronized(writeLock) {
+            when (tag.getTagType()) {
+                TagType.SCRIPT -> {
+                    this.flvWriter?.writeFlvHeader()
+                    this.previousScriptTag = tag
+                    this.flvWriter?.writeFlvScriptTag(tag, false)
+                    this.previousScriptTagBinaryLength.set(tag.binaryLength)
+                }
+                TagType.VIDEO -> {
+                    if (::previousScriptTag.isInitialized) {
+                        updateVideoDuration(tag)
+                        writeVideoChunk(tag)
+                    }else{
+                        writeTag(newScriptTag())
+                    }
+                }
+                TagType.AUDIO -> {
+                    if (::previousScriptTag.isInitialized) {
+                        this.flvWriter?.writeFlvData(tag)
+                    }else{
+                        writeTag(newScriptTag())
+                    }
+                }
+                else -> {
+                    // Do nothing
+                }
+            }
+        }
+    }
+
+    private fun newScriptTag():Tag{
+        logger.debug("构造新的ScriptTag")
+        val tag=Tag()
+        val list=LinkedList<BaseScriptDataValue>()
+        list.add(ScriptDataString().also { it.value="onMetaData" })
+        val arrayData=ScriptDataEcmaArray()
+        arrayData["keyframes"]=KeyframesObject()
+        list.add(arrayData)
+        val tagData=ScriptData(list)
+        tag.setTagType(TagType.SCRIPT)
+        tag.data=tagData
+        tag.setStreamId(0)
+        tag.setDataSize(tagData.binaryLength.toInt())
+        tag.setTimeStamp(0)
+        return tag
+    }
+
+    private fun updateVideoDuration(tag: Tag) {
+        with((this.previousScriptTag.data as ScriptData)[1] as ScriptDataEcmaArray) {
+            val oldDuration = (this["duration"] as ScriptDataNumber?)?.value ?: 0.0
+            val newValue = oldDuration.coerceAtLeast(tag.getTimeStamp() / 1000.0) // Script tag 中的长度是以秒为单位的
+            this["duration"] = ScriptDataNumber.assign(newValue)
+        }
+        overwriteFlvScriptData(this.previousScriptTag)
+    }
+
+    private fun writeVideoChunk(tag: Tag) {
+        if (tag.data !is VideoData) {
+            logger.warn("data 不是视频数据块，忽略")
+            return
+        }
+        if ((tag.data as VideoData).frameType == FrameType.KEY_FRAME) {
+            (((this.previousScriptTag.data as ScriptData)[1] as ScriptDataEcmaArray)["keyframes"] as KeyframesObject).addKeyframe(
+                tag.getTimeStamp().toDouble(),
+                this.flvWriter?.getFileLength()!!
+            )
+            overwriteFlvScriptData(this.previousScriptTag)
+        }
+        this.flvWriter!!.writeFlvData(tag)
+    }
+
+    private fun overwriteFlvScriptData(data: Tag) {
+        val bos = ByteArrayOutputStream()
+        data.writeTo(bos)
+        if (bos.size().toLong() != previousScriptTagBinaryLength.get()) {
+            logger.warn("Script Tag 数据块长度不匹配，忽略（old=${previousScriptTagBinaryLength}, new=${bos.size().toLong()}）")
+            logger.warn("previousScriptTag=$previousScriptTag, current=$data")
+            return
+        }
+        this.flvWriter!!.writeFlvScriptTag(data)
+        this.previousScriptTagBinaryLength.set(data.binaryLength)
+        bos.close()
+    }
+}
