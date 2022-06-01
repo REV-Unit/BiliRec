@@ -1,7 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag
 
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
-import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.FrameType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.*
 import moe.peanutmelonseedbigalmond.bilirec.flv.toDouble
 import moe.peanutmelonseedbigalmond.bilirec.flv.toInt
@@ -11,8 +10,6 @@ import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.io.OutputStream
 import java.util.*
-import kotlin.IllegalArgumentException
-import kotlin.collections.ArrayList
 
 class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> =LinkedList()) : BaseTagData() {
     override lateinit var binaryData: ByteArray

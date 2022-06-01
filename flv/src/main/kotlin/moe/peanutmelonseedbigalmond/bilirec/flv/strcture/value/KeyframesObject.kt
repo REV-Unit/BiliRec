@@ -3,7 +3,6 @@ package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
 import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
 import java.io.OutputStream
-import kotlin.collections.LinkedHashMap
 import kotlin.math.abs
 
 class KeyframesObject(map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHashMap()) :

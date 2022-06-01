@@ -2,7 +2,6 @@ package moe.peanutmelonseedbigalmond.bilirec.network.danmaku.data
 
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.enum.DanmakuCommand
 import org.json.JSONObject
-import java.awt.TrayIcon
 
 // 部分字段含义参考了 https://github.com/xfgryujk/blivedm/blob/d8f7f6b7828069cb6c1fd13f756cfd891f0b1a46/blivedm/models.py
 data class DanmakuModel constructor(

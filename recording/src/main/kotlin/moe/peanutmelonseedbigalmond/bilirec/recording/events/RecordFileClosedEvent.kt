@@ -1,4 +1,3 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.events
 
-class RecordFileClosedEvent {
-}
+data class RecordFileClosedEvent (val roomId:Long)

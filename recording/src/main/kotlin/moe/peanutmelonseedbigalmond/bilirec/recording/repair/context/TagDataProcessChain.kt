@@ -8,9 +8,7 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.ScriptDataEcmaArr
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.ScriptDataNumber
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.ScriptDataObject
 import moe.peanutmelonseedbigalmond.bilirec.logging.BaseLogging
-import moe.peanutmelonseedbigalmond.bilirec.recording.exception.ScriptTagReadException
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.BaseFlvTagProcessChain
-import java.util.concurrent.atomic.AtomicLong
 
 class TagDataProcessChain(private val logger:BaseLogging):BaseFlvTagProcessChain() {
     private var scriptChunkRead = false

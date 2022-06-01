@@ -4,7 +4,6 @@ import com.haroldadmin.cnradapter.NetworkResponse
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.*
 import retrofit2.http.GET
 import retrofit2.http.Query
-import retrofit2.http.Url
 
 interface BiliApi {
     @GET("/room/v1/Room/get_info")

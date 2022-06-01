@@ -3,7 +3,6 @@ package moe.peanutmelonseedbigalmond.bilirec.logging
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.apache.logging.log4j.ThreadContext
-import kotlin.math.log
 
 class ConsoleLogging(private val roomId: Long? = null, cls: Any? = null) : BaseLogging() {
     private var logger: Logger =

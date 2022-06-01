@@ -3,7 +3,8 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.writer
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.data.DanmakuModel
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.enum.DanmakuCommand
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
-import java.io.*
+import java.io.FileOutputStream
+import java.io.OutputStream
 import java.time.Duration
 import java.time.OffsetDateTime
 import javax.xml.stream.XMLOutputFactory
@@ -11,9 +12,9 @@ import javax.xml.stream.XMLStreamWriter
 
 class DanmakuWriter(
     private val room: Room,
-    private val startTime: OffsetDateTime,
     outputFileName: String
 ) : AutoCloseable {
+    private val startTime: OffsetDateTime = OffsetDateTime.now()
     private var writer: XMLStreamWriter
     private var outputStream: OutputStream = FileOutputStream(outputFileName)
 

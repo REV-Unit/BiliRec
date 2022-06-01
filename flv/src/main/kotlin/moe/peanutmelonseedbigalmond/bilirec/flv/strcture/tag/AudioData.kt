@@ -1,11 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag
 
-import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.FrameType
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagFlag
-import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
-import java.io.ByteArrayInputStream
 import java.io.OutputStream
-import kotlin.experimental.and
 
 class AudioData private constructor() : BaseTagData() {
     override lateinit var binaryData: ByteArray

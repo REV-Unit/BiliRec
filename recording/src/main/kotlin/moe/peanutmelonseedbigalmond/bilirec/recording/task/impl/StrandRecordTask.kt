@@ -1,14 +1,23 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.task.impl
 
+import kotlinx.coroutines.*
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
+import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
+import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.extension.getCodecItemInStreamUrl
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.context.LiveStreamRepairContext
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
+import org.greenrobot.eventbus.EventBus
 import java.io.InputStream
 import java.time.Duration
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.coroutines.CoroutineContext
 
-class StrandRecordTask(private val room: Room, private val outputFileNamePrefix: String) : BaseRecordTask(room) {
+class StrandRecordTask(
+    private val room: Room,
+    coroutineContext: CoroutineContext = Dispatchers.IO
+) : BaseRecordTask(room), CoroutineScope by CoroutineScope(coroutineContext) {
     private val qnMap = mapOf(
         20000 to "4K",
         10000 to "原画",
@@ -18,6 +27,7 @@ class StrandRecordTask(private val room: Room, private val outputFileNamePrefix:
         150 to "高清",
         80 to "流畅"
     )
+    private val startAndStopLock = ReentrantLock()
 
     @Volatile
     private var started = false
@@ -29,28 +39,65 @@ class StrandRecordTask(private val room: Room, private val outputFileNamePrefix:
     @Volatile
     private var repairContext: LiveStreamRepairContext? = null
 
-    override fun start() {
-        if (started) {
-            return
+    @Volatile
+    private lateinit var liveStream: InputStream
+
+    override fun prepare() {
+        launch {
+            if (started) return@launch
+            createLiveStreamRepairContextAsync()
         }
-        val (fullUrl, _) = getLiveStreamAddressAsync()
-        val inputStream = getLiveStreamAsync(fullUrl, Duration.ofMinutes(1))
-        repairContext = LiveStreamRepairContext(inputStream, room, outputFileNamePrefix)
+    }
+
+    private suspend fun createLiveStreamRepairContextAsync(requireDelay: Boolean = false) {
+        withContext(Dispatchers.IO) {
+            try {
+                startAndStopLock.lock()
+                if (requireDelay) delay(1000)
+                val (fullUrl, _) = getLiveStreamAddressAsync()
+                liveStream = getLiveStreamAsync(fullUrl, Duration.ofMinutes(1))
+            } catch (e: Exception) {
+                logger.error("获取直播流出错：${e.stackTraceToString()}")
+                logger.info("重新获取直播流")
+                createLiveStreamRepairContextAsync(true)
+            } finally {
+                startAndStopLock.unlock()
+            }
+        }
+    }
+
+    override fun startAsync(baseFileName: String) {
+        startAndStopLock.lock()
+        if (started) return
+        repairContext = LiveStreamRepairContext(liveStream, room, baseFileName)
         repairContext!!.startAsync()
         started = true
+        EventBus.getDefault().post(RecordFileOpenedEvent(this.room.roomConfig.roomId, baseFileName))
+        startAndStopLock.unlock()
+    }
+
+    override fun stopRecording() {
+        startAndStopLock.lock()
+        if (closed) return
+        mClosed = true
+        started = false
+        logger.info("停止接收直播流")
+        repairContext?.close()
+        repairContext = null
+        EventBus.getDefault().post(RecordFileClosedEvent(this.room.roomConfig.roomId))
+        startAndStopLock.unlock()
     }
 
     override fun close() {
-        if (closed) return
-        mClosed = true
-        logger.info("停止接收直播流")
-        repairContext?.close()
-        repairContext=null
+        startAndStopLock.lock()
+        stopRecording()
+        cancel()
+        startAndStopLock.unlock()
     }
 
     // region 获取直播流
     private fun getLiveStreamAddressAsync(qn: Int = 10000): Pair<String, Int> {
-        var selectedQn = qn
+        val selectedQn: Int
         val codecItemResp = BiliApiClient.DEFAULT_CLIENT.getCodecItemInStreamUrl(room.roomConfig.roomId, qn)
         requireNotNull(codecItemResp) { "no supported stream url, qn: $qn" }
 

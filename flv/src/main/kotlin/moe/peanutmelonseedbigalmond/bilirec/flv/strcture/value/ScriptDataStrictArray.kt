@@ -4,7 +4,6 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
 import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
 import java.io.OutputStream
 import java.util.*
-import kotlin.collections.ArrayList
 
 class ScriptDataStrictArray(
     private val arrayList: LinkedList<BaseScriptDataValue> = LinkedList()

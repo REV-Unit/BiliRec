@@ -1,10 +1,8 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.task.impl
 
-import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExitedEvent
-import moe.peanutmelonseedbigalmond.bilirec.recording.generateFileName
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
 import org.greenrobot.eventbus.EventBus
 import java.io.EOFException
@@ -31,6 +29,9 @@ class RawRecordTask(
     @Volatile
     private var mClosed = false
     override val closed: Boolean = mClosed
+    override fun prepare() {
+
+    }
 
     private inner class Worker : Runnable {
         @Volatile
@@ -56,7 +57,7 @@ class RawRecordTask(
         }
     }
 
-    override fun start() {
+    override fun startAsync(baseFileName:String) {
         if (writer == null) {
             writer = FileOutputStream("${outputFileNamePrefix}_raw.flv")
         }
@@ -64,6 +65,10 @@ class RawRecordTask(
             worker = Worker()
             worker!!.run()
         }
+    }
+
+    override fun stopRecording() {
+
     }
 
     override fun close() {

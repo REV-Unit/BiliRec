@@ -1,9 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
-import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
-import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.concurrent.thread
 
 class Recording private constructor(private val innerMap: ConcurrentHashMap<Long, Room>) :
     Map<Long, Room> by innerMap {
@@ -17,14 +14,13 @@ class Recording private constructor(private val innerMap: ConcurrentHashMap<Long
         } else {
             if (!innerMap.contains(room.roomConfig.roomId)) {
                 innerMap[room.roomConfig.roomId] = room
+                room.prepareAsync()
             }
         }
     }
 
     fun unregisterTask(roomId: Long) {
-        thread {
-            innerMap.remove(roomId)?.close()
-        }
+        innerMap.remove(roomId)?.close()
     }
 
     fun unregisterAllTasks() {

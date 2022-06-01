@@ -2,7 +2,7 @@ package moe.peanutmelonseedbigalmond.bilirec.network.api
 
 import com.haroldadmin.cnradapter.NetworkResponse
 import com.haroldadmin.cnradapter.NetworkResponseAdapterFactory
-import kotlinx.coroutines.*
+import kotlinx.coroutines.runBlocking
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.DanmakuServerResponse
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.LiveStreamUrlResponse
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.RoomAnchorInfoResponse

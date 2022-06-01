@@ -1,58 +1,58 @@
 package moe.peanutmelonseedbigalmond.bilirec.network.danmaku.event
 
-import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.DanmakuWssClient
+import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.client.DanmakuTcpClient
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.data.DanmakuModel
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.enum.DanmakuCommand.*
 
 open class DanmakuEvents private constructor(
-    open val client: DanmakuWssClient,
+    open val client: DanmakuTcpClient,
     open val roomId: Long,
     open val danmakuModel: DanmakuModel
 ) {
     data class DanmakuReceivedEvent(
-        override val client: DanmakuWssClient,
+        override val client: DanmakuTcpClient,
         override val roomId: Long,
         override val danmakuModel: DanmakuModel,
     ) : DanmakuEvents(client, roomId, danmakuModel)
 
     data class GiftReceivedEvent(
-        override val client: DanmakuWssClient,
+        override val client: DanmakuTcpClient,
         override val roomId: Long,
         override val danmakuModel: DanmakuModel,
     ) : DanmakuEvents(client, roomId, danmakuModel)
 
     data class SuperChatReceivedEvent(
-        override val client: DanmakuWssClient,
+        override val client: DanmakuTcpClient,
         override val roomId: Long,
         override val danmakuModel: DanmakuModel,
     ) : DanmakuEvents(client, roomId, danmakuModel)
 
     data class AnchorReceivedEvent(
-        override val client: DanmakuWssClient,
+        override val client: DanmakuTcpClient,
         override val roomId: Long,
         override val danmakuModel: DanmakuModel,
     ) : DanmakuEvents(client, roomId, danmakuModel)
 
     data class RoomChangeEvent(
-        override val client: DanmakuWssClient,
+        override val client: DanmakuTcpClient,
         override val roomId: Long,
         override val danmakuModel: DanmakuModel,
     ) : DanmakuEvents(client, roomId, danmakuModel)
 
     data class LiveStartEvent(
-        override val client: DanmakuWssClient,
+        override val client: DanmakuTcpClient,
         override val roomId: Long,
         override val danmakuModel: DanmakuModel,
     ) : DanmakuEvents(client, roomId, danmakuModel)
 
     data class LiveEndEvent(
-        override val client: DanmakuWssClient,
+        override val client: DanmakuTcpClient,
         override val roomId: Long,
         override val danmakuModel: DanmakuModel,
     ) : DanmakuEvents(client, roomId, danmakuModel)
 
     data class OtherEvent(
-        override val client: DanmakuWssClient,
+        override val client: DanmakuTcpClient,
         override val roomId: Long,
         override val danmakuModel: DanmakuModel,
     ) : DanmakuEvents(client, roomId, danmakuModel)
@@ -60,7 +60,7 @@ open class DanmakuEvents private constructor(
 
     companion object {
         fun parse(
-            client: DanmakuWssClient,
+            client: DanmakuTcpClient,
             roomId: Long,
             danmakuModel: DanmakuModel,
         ): DanmakuEvents {

@@ -1,15 +1,11 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.writer
 
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.ScriptData
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.KeyframesObject
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.ScriptDataEcmaArray
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.ScriptDataObject
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import java.io.ByteArrayOutputStream
 import java.io.RandomAccessFile
-import java.util.*
 
 class FlvTagWriter(private val randomAccessFile: RandomAccessFile) : AutoCloseable {
 
