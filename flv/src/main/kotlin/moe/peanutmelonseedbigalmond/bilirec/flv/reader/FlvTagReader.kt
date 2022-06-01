@@ -57,7 +57,7 @@ class FlvTagReader(
         }
         return try {
             parseTagDataAsync(inputStream)
-        } catch (e: EOFException) {
+        } catch (_: IOException) {
             null
         }
     }
