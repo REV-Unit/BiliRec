@@ -58,6 +58,9 @@ class Room(
     @Volatile
     lateinit var title: String
         private set
+
+    @Volatile
+    private var requireRestart = true
     //endregion
 
     private lateinit var updateRoomInfoJob: Job
@@ -74,7 +77,7 @@ class Room(
                     logger.info("获取直播间信息成功：username=$userName, title=$title, parentAreaName=$parentAreaName, childAreaName=$childAreaName")
                     if (this@Room.living) requestStartAsync()
                     break
-                }catch (_:CancellationException){
+                } catch (_: CancellationException) {
 
                 } catch (e: Exception) {
                     logger.error("刷新房间信息失败，重试：$e")
@@ -91,8 +94,8 @@ class Room(
         if (closed) return
         closed = true
         runBlocking(coroutineContext) { requestStop() }
-        EventBus.getDefault().unregister(this)
         cancel()
+        EventBus.getDefault().unregister(this)
     }
 
     // region start and stop
@@ -102,6 +105,7 @@ class Room(
             if (!living) return@withContext
             // 如果既没有手动开始，配置文件也不是自动开始录制，则返回
             if (!forceStart && !this@Room.roomConfig.enableAutoRecord) return@withContext
+            requireRestart = true
             while (isActive) {
                 try {
                     val startTime = OffsetDateTime.now()
@@ -110,6 +114,7 @@ class Room(
                     val fileName = File(baseDir, removeIllegalChar(generateFileName(this@Room, startTime)))
                     recordingTaskController.requestStartAsync(fileName.canonicalPath)
                     this@Room.living = true
+                    this@Room.recording = true
                     break
                 } catch (e: Exception) {
                     logger.error("启动录制任务失败，1秒后重试")
@@ -121,6 +126,9 @@ class Room(
     }
 
     private suspend fun requestStop() {
+        requireRestart = false
+        if (!this.recording) return
+        recording = false
         recordingTaskController.requestStopAsync()
     }
     // endregion
@@ -174,7 +182,10 @@ class Room(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onRecordingThreadExited(event: RecordingThreadExitedEvent) {
         if (event.room.roomConfig.roomId == this.roomConfig.roomId) {
-            runBlocking(coroutineContext) { requestStop() }
+            if (this.recording){
+                runBlocking(coroutineContext) { requestStop() }
+            }
+            if (!requireRestart) return
             // 重试
             launch {
                 try {

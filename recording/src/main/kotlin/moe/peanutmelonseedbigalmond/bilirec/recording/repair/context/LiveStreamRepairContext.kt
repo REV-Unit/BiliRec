@@ -68,8 +68,10 @@ class LiveStreamRepairContext(
     override fun close() {
         synchronized(writeLock) {
             if (closed) return
-            if (!flvWriteJob!!.isCancelled) {
-                flvWriteJob!!.cancel()
+            runBlocking {
+                if (!flvWriteJob!!.isCancelled) {
+                    flvWriteJob!!.cancelAndJoin()
+                }
             }
             closed = true
             this.flvTagReader?.close()
@@ -91,8 +93,10 @@ class LiveStreamRepairContext(
                 } catch (_: CancellationException) {
 
                 } catch (e: Exception) {
-                    EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
-                    this@LiveStreamRepairContext.closeQuietly()
+                    withContext(NonCancellable){
+                        EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
+                        this@LiveStreamRepairContext.closeQuietly()
+                    }
                 }
             }
         }

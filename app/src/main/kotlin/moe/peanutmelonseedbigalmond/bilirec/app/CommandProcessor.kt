@@ -1,7 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.app
 
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import moe.peanutmelonseedbigalmond.bilirec.config.ConfigRoot
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Recording
@@ -13,7 +12,6 @@ class CommandProcessor(args: Array<String>) {
     private lateinit var cli: CommandLine
     private val cliParser = DefaultParser()
     private val helpFormatter = HelpFormatter()
-    private val lock = Object()
     val options = Options().also {
         it.addOption("h", "help", false, "Print this help message")
         it.addOption(
@@ -65,7 +63,6 @@ class CommandProcessor(args: Array<String>) {
         Runtime.getRuntime().addShutdownHook(Thread {
             Recording.INSTANCE.unregisterAllTasks()
             LoggingFactory.getLogger().info("System Exited")
-            cancel()
         })
     }
 }

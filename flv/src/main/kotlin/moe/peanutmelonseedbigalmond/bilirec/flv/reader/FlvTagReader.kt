@@ -21,12 +21,8 @@ import kotlin.coroutines.CoroutineContext
  */
 class FlvTagReader(
     private val inputStream: InputStream,
-    coroutineContext: CoroutineContext = Dispatchers.IO
-) : Closeable, CoroutineScope by CoroutineScope(coroutineContext) {
-    constructor(fileName: String, coroutineContext: CoroutineContext = Dispatchers.IO) : this(
-        FileInputStream(fileName),
-        coroutineContext
-    )
+) : Closeable {
+    constructor(fileName: String, coroutineContext: CoroutineContext = Dispatchers.IO) : this(FileInputStream(fileName))
 
     private val tagIndex = AtomicLong(0)
 
@@ -38,12 +34,10 @@ class FlvTagReader(
 
     override fun close() {
         synchronized(readLock) {
-            if (!closed) {
-                closed = true
-                inputStream.close()
-            }
+            if (closed) return
+            closed = true
+            inputStream.close()
         }
-        cancel()
     }
 
     suspend fun readNextTagAsync(): Tag? {

@@ -25,9 +25,6 @@ class DanmakuRecordTask(
     private var recording = false
     override val closed: Boolean = recording
 
-    @Volatile
-    private var danmakuDisconnectRequired = false
-
     override fun prepare() {
         launch {
             EventBus.getDefault().register(this@DanmakuRecordTask)
@@ -62,7 +59,6 @@ class DanmakuRecordTask(
     }
 
     override fun close() {
-        this.danmakuDisconnectRequired = true
         stopRecording()
         EventBus.getDefault().unregister(this)
         cancel()
@@ -76,9 +72,7 @@ class DanmakuRecordTask(
                 danmakuClient.connectAsync()
             } catch (e: Exception) {
                 logger.error("连接弹幕服务器出错：${e.stackTraceToString()}")
-                if (!this@DanmakuRecordTask.danmakuDisconnectRequired) {
-                    connectToDanmakuServerAsync(true)
-                }
+                connectToDanmakuServerAsync(true)
             }
         }
 
@@ -138,8 +132,9 @@ class DanmakuRecordTask(
             }
         }
     }
+
     @Subscribe(threadMode = ThreadMode.ASYNC)
-    fun onOtherEventReceived(event: DanmakuEvents.OtherEvent){
+    fun onOtherEventReceived(event: DanmakuEvents.OtherEvent) {
         // Do nothing
     }
     // endregion

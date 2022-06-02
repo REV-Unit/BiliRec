@@ -43,16 +43,12 @@ class StrandRecordTask(
     private lateinit var liveStream: InputStream
 
     override fun prepare() {
-        launch {
-            if (started) return@launch
-            createLiveStreamRepairContextAsync()
-        }
+        // 准备时不需要做任何事
     }
 
     private suspend fun createLiveStreamRepairContextAsync(requireDelay: Boolean = false) {
         withContext(Dispatchers.IO) {
             try {
-                startAndStopLock.lock()
                 if (requireDelay) delay(1000)
                 val (fullUrl, _) = getLiveStreamAddressAsync()
                 liveStream = getLiveStreamAsync(fullUrl, Duration.ofMinutes(1))
@@ -60,15 +56,17 @@ class StrandRecordTask(
                 logger.error("获取直播流出错：${e.stackTraceToString()}")
                 logger.info("重新获取直播流")
                 createLiveStreamRepairContextAsync(true)
-            } finally {
-                startAndStopLock.unlock()
             }
         }
     }
 
     override fun startAsync(baseFileName: String) {
         startAndStopLock.lock()
-        if (started) return
+        if (started) {
+            startAndStopLock.unlock()
+            return
+        }
+        runBlocking{ createLiveStreamRepairContextAsync() }
         repairContext = LiveStreamRepairContext(liveStream, room, baseFileName)
         repairContext!!.startAsync()
         started = true
@@ -78,8 +76,10 @@ class StrandRecordTask(
 
     override fun stopRecording() {
         startAndStopLock.lock()
-        if (closed) return
-        mClosed = true
+        if (!started) {
+            startAndStopLock.unlock()
+            return
+        }
         started = false
         logger.info("停止接收直播流")
         repairContext?.close()
@@ -90,6 +90,11 @@ class StrandRecordTask(
 
     override fun close() {
         startAndStopLock.lock()
+        if (closed) {
+            startAndStopLock.unlock()
+            return
+        }
+        mClosed = true
         stopRecording()
         cancel()
         startAndStopLock.unlock()
