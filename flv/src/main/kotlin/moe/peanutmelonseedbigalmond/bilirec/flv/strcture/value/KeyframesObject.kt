@@ -28,7 +28,7 @@ class KeyframesObject(map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHa
         writeKey(stream, KEY_FILE_POSITIONS)
         writeStrictArray(stream, filePositionsArray)
 
-        val count = MAX_KEYFRAME_COUNT - timesArray.size * 2
+        val count = (MAX_KEYFRAME_COUNT - timesArray.size) * 2
         writeKey(stream, KEY_SPACER)
         stream.write(byteArrayOf(ScriptDataType.STRICT_ARRAY.value.toByte()))
         stream.write(count.toByteArray())
@@ -53,14 +53,15 @@ class KeyframesObject(map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHa
     }
 
     fun addKeyframe(keyframeTimeMillisecond: Double, keyframePosition: Long) {
+        if ((this[KEY_TIMES]!! as ScriptDataStrictArray).size >= MAX_KEYFRAME_COUNT) return
         val previousTime = ((this[KEY_TIMES]!! as ScriptDataStrictArray).lastOrNull() as ScriptDataNumber?)?.value
             ?: Double.NEGATIVE_INFINITY
         if (abs(keyframeTimeMillisecond - previousTime) < MAX_INTERVAL) {
             return
         } else {
             (this[KEY_TIMES]!! as ScriptDataStrictArray).add(ScriptDataNumber.assign(keyframeTimeMillisecond / 1000.0))
+            (this[KEY_FILE_POSITIONS]!! as ScriptDataStrictArray).add(ScriptDataNumber.assign(keyframePosition.toDouble()))
         }
-        (this[KEY_FILE_POSITIONS]!! as ScriptDataStrictArray).add(ScriptDataNumber.assign(keyframePosition.toDouble()))
 //        repeat(2){
 //            (this[KEY_SPACER]!!as ScriptDataStrictArray).removeLast()
 //        }
@@ -74,7 +75,7 @@ class KeyframesObject(map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHa
         /**
          * 关键帧的配置
          * 按照最多 9,000 关键帧，每两个关键帧间隔 2,000ms 计算
-         * 最多可保证长度小于 9,000*2,000/1,000=18,000ms=5h
+         * 最多可保证长度小于 9,000*2,000/1,000=18,000s=5h
          * 都能够有关键帧索引
          */
 

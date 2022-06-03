@@ -9,7 +9,7 @@ import java.io.RandomAccessFile
 
 class FlvTagWriter(private val randomAccessFile: RandomAccessFile) : AutoCloseable {
 
-    constructor(fileName: String) : this(RandomAccessFile(fileName, "rwd"))
+    constructor(fileName: String) : this(RandomAccessFile(fileName, "rw"))
 
     private val logger = LoggingFactory.getLogger(obj = this)
     private val writeLock = Object()

@@ -39,6 +39,10 @@ class ScriptDataEcmaArray(private val map: LinkedHashMap<String, BaseScriptDataV
         this.map[key.value] = value
     }
 
+    fun remove(key:String):BaseScriptDataValue?{
+        return map.remove(key)
+    }
+
     override fun toString(): String {
         return "$type, Count=${size}"
     }

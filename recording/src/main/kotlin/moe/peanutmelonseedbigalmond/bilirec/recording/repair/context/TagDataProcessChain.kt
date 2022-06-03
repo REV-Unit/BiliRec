@@ -24,10 +24,8 @@ class TagDataProcessChain(private val logger:BaseLogging):BaseFlvTagProcessChain
                     (tag.data as ScriptData)[1] =
                         ((tag.data as ScriptData)[1] as ScriptDataObject).toScriptDataEcmaArray()
                 }
-                if (!containsKey(tag.data as ScriptData,"keyframes")) {
-                    with((tag.data as ScriptData)[1] as ScriptDataEcmaArray) {
-                        this["keyframes"] = KeyframesObject()
-                    }
+                with((tag.data as ScriptData)[1] as ScriptDataEcmaArray) {
+                    this["keyframes"] = KeyframesObject()
                 }
                 if (!containsKey(tag.data as ScriptData,"duration")){
                     with((tag.data as ScriptData)[1] as ScriptDataEcmaArray) {

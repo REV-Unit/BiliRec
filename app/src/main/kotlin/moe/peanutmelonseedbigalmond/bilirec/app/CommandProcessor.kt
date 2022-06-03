@@ -60,9 +60,11 @@ class CommandProcessor(args: Array<String>) {
             Recording.INSTANCE.registerTask(room)
         }
 
-        Runtime.getRuntime().addShutdownHook(Thread {
-            Recording.INSTANCE.unregisterAllTasks()
-            LoggingFactory.getLogger().info("System Exited")
+        Runtime.getRuntime().addShutdownHook(object :Thread(){
+            override fun run() {
+                Recording.INSTANCE.unregisterAllTasks()
+                LoggingFactory.getLogger().info("System Exited")
+            }
         })
     }
 }

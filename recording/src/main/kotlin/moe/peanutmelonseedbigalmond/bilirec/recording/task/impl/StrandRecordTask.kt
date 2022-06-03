@@ -70,8 +70,8 @@ class StrandRecordTask(
         repairContext = LiveStreamRepairContext(liveStream, room, baseFileName)
         repairContext!!.startAsync()
         started = true
-        EventBus.getDefault().post(RecordFileOpenedEvent(this.room.roomConfig.roomId, baseFileName))
         startAndStopLock.unlock()
+        EventBus.getDefault().post(RecordFileOpenedEvent(this.room.roomConfig.roomId, baseFileName))
     }
 
     override fun stopRecording() {
@@ -84,8 +84,8 @@ class StrandRecordTask(
         logger.info("停止接收直播流")
         repairContext?.close()
         repairContext = null
-        EventBus.getDefault().post(RecordFileClosedEvent(this.room.roomConfig.roomId))
         startAndStopLock.unlock()
+        EventBus.getDefault().post(RecordFileClosedEvent(this.room.roomConfig.roomId))
     }
 
     override fun close() {
