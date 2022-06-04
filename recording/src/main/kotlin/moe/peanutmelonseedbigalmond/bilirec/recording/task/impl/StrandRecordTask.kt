@@ -53,7 +53,8 @@ class StrandRecordTask(
                 val (fullUrl, _) = getLiveStreamAddressAsync()
                 liveStream = getLiveStreamAsync(fullUrl, Duration.ofMinutes(1))
             } catch (e: Exception) {
-                logger.error("获取直播流出错：${e.stackTraceToString()}")
+                logger.error("获取直播流出错：${e.localizedMessage}")
+                logger.debug(e.stackTraceToString())
                 logger.info("重新获取直播流")
                 createLiveStreamRepairContextAsync(true)
             }

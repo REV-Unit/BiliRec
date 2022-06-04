@@ -37,9 +37,9 @@ class Room(
         private set(value) {
             if (value != field) {
                 if (value) {
-                    launch { requestStartAsync() }
+                    runBlocking { requestStartAsync() }
                 } else {
-                    launch { requestStop() }
+                    runBlocking { requestStop() }
                 }
             }
             field = value
@@ -113,11 +113,6 @@ class Room(
         withContext(Dispatchers.IO) {
             startAndStopLock.lock()
             if (closed) {
-                startAndStopLock.unlock()
-                return@withContext
-            }
-            // 没有在直播，直接返回
-            if (!living) {
                 startAndStopLock.unlock()
                 return@withContext
             }
@@ -231,10 +226,12 @@ class Room(
         if (event.roomId == this.roomConfig.roomId) {
             logger.info("直播开始")
             logger.debug(event.danmakuModel.toString())
-            try {
-                getRoomInfo()
-            } catch (e: Exception) {
-                logger.debug("刷新直播间信息时出现异常：${e.stackTraceToString()}")
+            if (event.danmakuModel.liveTime==0L){
+                try {
+                    getRoomInfo()
+                } catch (e: Exception) {
+                    logger.debug("刷新直播间信息时出现异常：${e.stackTraceToString()}")
+                }
             }
         }
     }

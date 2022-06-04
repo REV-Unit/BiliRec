@@ -120,6 +120,15 @@ data class DanmakuModel constructor(
      */
     var roomId: Long = 0L,
     /**
+     * 发现B站在主播点击 开始直播 和 正式推流 的时候
+     * 都会发送[DanmakuCommand.LIVE_START]
+     * 但是正式推流时，[liveTime]字段为空
+     * 所以可以用这个来判断是否正式开始推流
+     *
+     * 如果这一项为0，才开始获取直播地址
+     */
+    var liveTime:Long=0L,
+    /**
      * 原始数据
      */
     var rawString: String? = null,
@@ -143,7 +152,12 @@ data class DanmakuModel constructor(
             model.rawObject = obj
             model.rawString = json
             when (danmakuCommand) {
-                DanmakuCommand.LIVE_START -> model.roomId = obj.getLong("roomid")
+                DanmakuCommand.LIVE_START -> {
+                    model.roomId = obj.getLong("roomid")
+                    if (obj.has("live_time")){
+                        model.liveTime=obj.getLong("live_time")
+                    }
+                }
                 DanmakuCommand.LIVE_END ->
                     model.roomId = obj.getString("roomid").toLong()
                 DanmakuCommand.DANMAKU -> {
