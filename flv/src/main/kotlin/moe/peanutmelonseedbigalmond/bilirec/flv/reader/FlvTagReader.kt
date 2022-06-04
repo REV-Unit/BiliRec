@@ -22,7 +22,7 @@ import kotlin.coroutines.CoroutineContext
 class FlvTagReader(
     private val inputStream: InputStream,
 ) : Closeable {
-    constructor(fileName: String, coroutineContext: CoroutineContext = Dispatchers.IO) : this(FileInputStream(fileName))
+    constructor(fileName: String) : this(FileInputStream(fileName))
 
     private val tagIndex = AtomicLong(0)
 
@@ -49,7 +49,11 @@ class FlvTagReader(
                 return null
             }
         }
-        return parseTagDataAsync(inputStream)
+        return try {
+            parseTagDataAsync(inputStream)
+        } catch (_: IOException) {
+            null
+        }
     }
 
     // region 解析数据

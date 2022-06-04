@@ -183,7 +183,8 @@ class Room(
         if (event.room.roomConfig.roomId == this.roomConfig.roomId) {
             when (event.extra) {
                 is Exception -> {
-                    logger.error("直播流修复时出现异常：${event.extra.stackTraceToString()}")
+                    logger.error("直播流修复时出现异常：${event.extra.localizedMessage}")
+                    logger.debug(event.extra.stackTraceToString())
                     this@Room.living=false
                 }
             }
@@ -202,7 +203,8 @@ class Room(
                         getRoomInfo()
                         break
                     } catch (e: Exception) {
-                        logger.error("重试启动直播流时出现异常：${e.stackTraceToString()}")
+                        logger.error("重试启动直播流时出现异常：${e.localizedMessage}")
+                        logger.debug(e.stackTraceToString())
                         delay(5000)
                     }
                 }
