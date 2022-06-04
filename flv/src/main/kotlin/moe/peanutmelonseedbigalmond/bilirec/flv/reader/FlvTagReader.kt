@@ -49,11 +49,7 @@ class FlvTagReader(
                 return null
             }
         }
-        return try {
-            parseTagDataAsync(inputStream)
-        } catch (_: IOException) {
-            null
-        }
+        return parseTagDataAsync(inputStream)
     }
 
     // region 解析数据

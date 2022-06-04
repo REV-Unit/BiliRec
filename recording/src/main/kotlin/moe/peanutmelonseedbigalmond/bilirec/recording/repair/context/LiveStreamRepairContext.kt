@@ -18,6 +18,7 @@ import okhttp3.internal.closeQuietly
 import org.greenrobot.eventbus.EventBus
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
+import java.io.IOException
 import java.io.InputStream
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
@@ -68,11 +69,6 @@ class LiveStreamRepairContext(
     override fun close() {
         synchronized(writeLock) {
             if (closed) return
-            runBlocking {
-                if (!flvWriteJob!!.isCancelled) {
-                    flvWriteJob!!.cancelAndJoin()
-                }
-            }
             closed = true
             this.flvTagReader?.close()
             this.flvTagReader = null
@@ -93,10 +89,7 @@ class LiveStreamRepairContext(
                 } catch (_: CancellationException) {
 
                 } catch (e: Exception) {
-                    withContext(NonCancellable){
-                        EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
-                        this@LiveStreamRepairContext.closeQuietly()
-                    }
+                    EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
                 }
             }
         }

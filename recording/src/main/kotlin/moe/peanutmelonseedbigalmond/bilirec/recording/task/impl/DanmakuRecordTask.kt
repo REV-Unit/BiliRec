@@ -67,7 +67,7 @@ class DanmakuRecordTask(
     private suspend fun connectToDanmakuServerAsync(requireDelay: Boolean = false): Unit =
         withContext(Dispatchers.IO) {
             if (closed) return@withContext
-            try {
+            return@withContext try {
                 if (requireDelay) delay(5000)
                 danmakuClient.connectAsync()
             } catch (e: Exception) {

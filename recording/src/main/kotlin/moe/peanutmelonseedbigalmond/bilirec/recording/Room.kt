@@ -78,7 +78,7 @@ class Room(
 
     fun prepareAsync(): Job {
         EventBus.getDefault().register(this)
-        return launch(coroutineContext) {
+        return launch(Dispatchers.IO) {
             updateRoomInfoJob = createUpdateRoomInfoJob()
             recordingTaskController = RoomRecordingTaskController(this@Room)
             recordingTaskController.prepareAsync()
@@ -103,7 +103,10 @@ class Room(
     override fun close() {
         if (closed) return
         closed = true
-        runBlocking(coroutineContext) { requestStop() }
+        runBlocking {
+            requestStop()
+            updateRoomInfoJob.cancelAndJoin()
+        }
         cancel()
         EventBus.getDefault().unregister(this)
     }
@@ -119,7 +122,7 @@ class Room(
             requireRestart = true
             while (isActive) {
                 try {
-                    recordingTaskController.requestStartAsync()
+                    runBlocking { recordingTaskController.requestStartAsync() }
                     break
                 } catch (e: Exception) {
                     logger.error("启动录制任务失败，1秒后重试")
@@ -181,6 +184,7 @@ class Room(
             when (event.extra) {
                 is Exception -> {
                     logger.error("直播流修复时出现异常：${event.extra.stackTraceToString()}")
+                    this@Room.living=false
                 }
             }
         }
@@ -193,10 +197,14 @@ class Room(
             if (!requireRestart) return
             // 重试
             launch {
-                try {
-                    getRoomInfo()
-                } catch (e: Exception) {
-                    logger.error("重试启动直播流时出现异常：${e.stackTraceToString()}")
+                while (isActive){
+                    try {
+                        getRoomInfo()
+                        break
+                    } catch (e: Exception) {
+                        logger.error("重试启动直播流时出现异常：${e.stackTraceToString()}")
+                        delay(5000)
+                    }
                 }
             }
         }
@@ -205,7 +213,7 @@ class Room(
 
     // region 定时刷新直播间信息
     private fun createUpdateRoomInfoJob(): Job {
-        return launch(context = coroutineContext, start = CoroutineStart.LAZY) {
+        return launch(context = Dispatchers.IO, start = CoroutineStart.LAZY) {
             while (isActive) {
                 try {
                     refreshRoomInfo()
@@ -214,7 +222,7 @@ class Room(
                 } catch (e: Exception) {
                     logger.error("获取直播间信息时出现异常：${e.localizedMessage}")
                     logger.debug(e.stackTraceToString())
-                }finally {
+                } finally {
                     delay(60 * 1000)
                 }
             }
@@ -228,7 +236,7 @@ class Room(
         if (event.roomId == this.roomConfig.roomId) {
             logger.info("直播开始")
             logger.debug(event.danmakuModel.toString())
-            if (event.danmakuModel.liveTime==0L){
+            if (event.danmakuModel.liveTime == 0L) {
                 try {
                     getRoomInfo()
                 } catch (e: Exception) {

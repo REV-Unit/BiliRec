@@ -24,8 +24,7 @@ class DanmakuTcpClient(
 ) : Closeable, CoroutineScope by CoroutineScope(coroutineContext) {
     private val lock = Object()
     private var socket: Socket? = null
-    val connected: Boolean
-        get() = socket?.isConnected ?: false
+    private var connected: Boolean = false
     private var inputStream: InputStream? = null
     private var outputStream: OutputStream? = null
     private val gson = Gson()
@@ -35,21 +34,24 @@ class DanmakuTcpClient(
     private var danmakuServerPort by Delegates.notNull<Int>()
     private lateinit var danmakuServerToken: String
 
-    fun connectAsync(): Job = launch(coroutineContext) {
-        if (connected) return@launch
-        if (socket == null) {
-            socket = Socket()
+    suspend fun connectAsync() {
+        withContext(coroutineContext){
+            if (connected) return@withContext
+            if (socket == null) {
+                socket = Socket()
+            }
+            getDanmakuServerInfoAsync()
+            withContext(Dispatchers.IO) { socket?.connect(InetSocketAddress(danmakuAddress, danmakuServerPort), 6000) }
+            this@DanmakuTcpClient.inputStream = withContext(Dispatchers.IO) { socket?.getInputStream() }
+            this@DanmakuTcpClient.outputStream = withContext(Dispatchers.IO) { socket?.getOutputStream() }
+            connected = true
+            this@DanmakuTcpClient.receiveMessageJob = createHandleMessageJob()
+            sendHelloAsync()
+            sendHeartbeatJob = createSendHeartbeatJob()
+            sendHeartbeatJob.start()
+            EventBus.getDefault()
+                .post(DanmakuClientEvent.ClientOpen(this@DanmakuTcpClient, this@DanmakuTcpClient.roomId))
         }
-        getDanmakuServerInfoAsync()
-        withContext(Dispatchers.IO) { socket?.connect(InetSocketAddress(danmakuAddress, danmakuServerPort), 6000) }
-        this@DanmakuTcpClient.inputStream = withContext(Dispatchers.IO) { socket?.getInputStream() }
-        this@DanmakuTcpClient.outputStream = withContext(Dispatchers.IO) { socket?.getOutputStream() }
-        this@DanmakuTcpClient.receiveMessageJob = createHandleMessageJob()
-        sendHelloAsync()
-        sendHeartbeatJob = createSendHeartbeatJob()
-        sendHeartbeatJob.start()
-        EventBus.getDefault()
-            .post(DanmakuClientEvent.ClientOpen(this@DanmakuTcpClient, this@DanmakuTcpClient.roomId))
     }
 
     private fun disconnect() {
@@ -61,6 +63,7 @@ class DanmakuTcpClient(
                 inputStream = null
                 socket?.close()
                 socket = null
+                connected = false
                 EventBus.getDefault().post(DanmakuClientEvent.ClientClosed(this, this.roomId))
             }
         }
@@ -112,10 +115,8 @@ class DanmakuTcpClient(
     private suspend fun sendAsync(messageBody: ByteArray) {
         withContext(Dispatchers.IO) {
             if (connected) {
-                withContext(Dispatchers.IO) {
-                    outputStream?.write(messageBody)
-                    outputStream?.flush()
-                }
+                outputStream?.write(messageBody)
+                outputStream?.flush()
             }
         }
     }
