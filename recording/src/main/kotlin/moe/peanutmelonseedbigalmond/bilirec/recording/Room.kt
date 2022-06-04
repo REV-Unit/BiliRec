@@ -209,11 +209,13 @@ class Room(
             while (isActive) {
                 try {
                     refreshRoomInfo()
-                    delay(60 * 1000)
                 } catch (_: CancellationException) {
 
                 } catch (e: Exception) {
-                    logger.error("获取直播间信息时出现异常：${e.stackTraceToString()}")
+                    logger.error("获取直播间信息时出现异常：${e.localizedMessage}")
+                    logger.debug(e.stackTraceToString())
+                }finally {
+                    delay(60 * 1000)
                 }
             }
         }

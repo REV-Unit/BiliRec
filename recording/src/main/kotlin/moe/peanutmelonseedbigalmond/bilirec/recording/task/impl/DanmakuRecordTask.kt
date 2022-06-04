@@ -71,7 +71,8 @@ class DanmakuRecordTask(
                 if (requireDelay) delay(5000)
                 danmakuClient.connectAsync()
             } catch (e: Exception) {
-                logger.error("连接弹幕服务器出错：${e.stackTraceToString()}")
+                logger.error("连接弹幕服务器出错：${e.localizedMessage}")
+                logger.debug(e.stackTraceToString())
                 connectToDanmakuServerAsync(true)
             }
         }
@@ -82,7 +83,7 @@ class DanmakuRecordTask(
         if (events.roomId == this.room.roomConfig.roomId) {
             synchronized(writeLock) {
                 if (recording) {
-                    logger.debug("收到弹幕：${events.danmakuModel.username} -> ${events.danmakuModel.commentText} (messageType=${events.danmakuModel.messageType}, lotteryDanmaku=${events.danmakuModel.lotteryDanmaku})")
+                    logger.trace("收到弹幕：${events.danmakuModel.username} -> ${events.danmakuModel.commentText} (messageType=${events.danmakuModel.messageType}, lotteryDanmaku=${events.danmakuModel.lotteryDanmaku})")
                     // 过滤掉抽奖弹幕
                     if (room.roomConfig.filterLotteryDanmaku && events.danmakuModel.lotteryDanmaku) return
                     for (filterRegex in this.room.roomConfig.danmakuFilterRegex) {
@@ -103,7 +104,7 @@ class DanmakuRecordTask(
         if (events.roomId == this.room.roomConfig.roomId) {
             synchronized(writeLock) {
                 if (recording) {
-                    logger.debug("收到礼物：${events.danmakuModel.username} -> ${events.danmakuModel.giftName} x ${events.danmakuModel.giftCount}")
+                    logger.trace("收到礼物：${events.danmakuModel.username} -> ${events.danmakuModel.giftName} x ${events.danmakuModel.giftCount}")
                     danmakuWriter?.writeGiftRecord(events.danmakuModel)
                 }
             }
@@ -160,7 +161,8 @@ class DanmakuRecordTask(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onWssClientError(event: DanmakuClientEvent.ClientFailure) {
         if (event.roomId == this.room.roomConfig.roomId) {
-            logger.error("发生错误：${event.throwable.stackTraceToString()}")
+            logger.error("发生错误：${event.throwable.localizedMessage}")
+            logger.debug(event.throwable.stackTraceToString())
         }
     }
     // endregion
