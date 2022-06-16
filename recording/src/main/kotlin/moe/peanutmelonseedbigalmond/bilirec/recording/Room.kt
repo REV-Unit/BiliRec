@@ -39,7 +39,7 @@ class Room(
                 if (value) {
                     runBlocking { requestStartAsync() }
                 } else {
-                    runBlocking { requestStop() }
+                    runBlocking { requestStopAsync() }
                 }
             }
             field = value
@@ -104,7 +104,7 @@ class Room(
         if (closed) return
         closed = true
         runBlocking {
-            requestStop()
+            requestStopAsync()
             updateRoomInfoJob.cancelAndJoin()
         }
         cancel()
@@ -135,7 +135,7 @@ class Room(
         }
     }
 
-    private suspend fun requestStop() {
+    private suspend fun requestStopAsync() {
         try {
             startAndStopLock.lock()
             requireRestart = false
@@ -194,7 +194,7 @@ class Room(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onRecordingThreadExited(event: RecordingThreadExitedEvent) {
         if (event.room.roomConfig.roomId == this.roomConfig.roomId) {
-            this.recordingTaskController.stopDanmakuRecordTask()
+            runBlocking{ this@Room.recordingTaskController.requestStopAsync() }
             if (!requireRestart) return
             // 重试
             launch {

@@ -1,6 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
@@ -50,14 +51,29 @@ class RoomRecordingTaskController(
     }
 
     override fun close() {
-        if (closed)return
+        runBlocking {
+            startAndStopLock.lock()
+            if (closed) {
+                startAndStopLock.unlock()
+                return@runBlocking
+            }
+
+            requestStopAsync()
+            withContext(Dispatchers.IO) {
+                videoRecordingTask?.closeQuietly()
+                danmakuRecordingTask!!.closeQuietly()
+            }
+            videoRecordingTask = null
+            danmakuRecordingTask = null
+        }
         EventBus.getDefault().unregister(this@RoomRecordingTaskController)
+        startAndStopLock.unlock()
     }
 
     suspend fun requestStopAsync() {
         withContext(Dispatchers.IO) {
             startAndStopLock.lock()
-            if (!started){
+            if (!started) {
                 startAndStopLock.unlock()
                 return@withContext
             }
@@ -65,14 +81,10 @@ class RoomRecordingTaskController(
                 videoRecordingTask?.stopRecording()
                 danmakuRecordingTask!!.stopRecording()
                 started = false
-            }finally {
+            } finally {
                 startAndStopLock.unlock()
             }
         }
-    }
-
-    fun stopDanmakuRecordTask(){
-        this.danmakuRecordingTask!!.stopRecording()
     }
 
     suspend fun requestStartAsync() {

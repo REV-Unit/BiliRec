@@ -75,7 +75,6 @@ class LiveStreamRepairContext(
             this.flvWriter?.close()
             this.flvWriter = null
             cancel()
-            EventBus.getDefault().post(RecordingThreadExitedEvent(this.room))
         }
     }
 
@@ -92,6 +91,9 @@ class LiveStreamRepairContext(
                     EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
                 }
             }
+            withContext(NonCancellable) {
+                EventBus.getDefault().post(RecordingThreadExitedEvent(this@LiveStreamRepairContext.room))
+            }
         }
     }
 
@@ -102,12 +104,11 @@ class LiveStreamRepairContext(
                 TagType.SCRIPT -> {
                     this.flvWriter?.writeFlvHeader()
                     this.previousScriptTag = tag
-                    this.flvWriter?.writeFlvScriptTag(tag, false)
+                    this.flvWriter?.writeFlvScriptTag(tag)
                     this.previousScriptTagBinaryLength.set(tag.binaryLength)
                 }
                 TagType.VIDEO -> {
                     if (::previousScriptTag.isInitialized) {
-                        updateVideoDuration(tag)
                         writeVideoChunk(tag)
                     } else {
                         writeTag(newScriptTag())
@@ -144,28 +145,31 @@ class LiveStreamRepairContext(
         return tag
     }
 
-    private fun updateVideoDuration(tag: Tag) {
-        with((this.previousScriptTag.data as ScriptData)[1] as ScriptDataEcmaArray) {
-            val oldDuration = (this["duration"] as ScriptDataNumber?)?.value ?: 0.0
-            val newValue = oldDuration.coerceAtLeast(tag.getTimeStamp() / 1000.0) // Script tag 中的长度是以秒为单位的
-            this["duration"] = ScriptDataNumber.assign(newValue)
-        }
-        overwriteFlvScriptData(this.previousScriptTag)
-    }
-
     private fun writeVideoChunk(tag: Tag) {
         if (tag.data !is VideoData) {
             logger.warn("data 不是视频数据块，忽略")
             return
         }
+
+        val scriptDataArray = (this.previousScriptTag.data as ScriptData)[1] as ScriptDataEcmaArray
+
+        // 更新ScriptData中的视频长度
+        with(scriptDataArray) {
+            val oldDuration = (this["duration"] as ScriptDataNumber?)?.value ?: 0.0
+            val newValue = oldDuration.coerceAtLeast(tag.getTimeStamp() / 1000.0) // Script tag 中的长度是以秒为单位的
+            this["duration"] = ScriptDataNumber.assign(newValue)
+        }
+
+        // 更新视频关键帧
         if ((tag.data as VideoData).frameType == FrameType.KEY_FRAME) {
-            (((this.previousScriptTag.data as ScriptData)[1] as ScriptDataEcmaArray)["keyframes"] as KeyframesObject).addKeyframe(
+            (scriptDataArray["keyframes"] as KeyframesObject).addKeyframe(
                 tag.getTimeStamp().toDouble(),
                 this.flvWriter?.getFileLength()!!
             )
-            overwriteFlvScriptData(this.previousScriptTag)
         }
         this.flvWriter!!.writeFlvData(tag)
+        overwriteFlvScriptData(this.previousScriptTag)
+//        this.flvWriter!!.flush()
     }
 
     private fun overwriteFlvScriptData(data: Tag) {
@@ -181,3 +185,8 @@ class LiveStreamRepairContext(
         bos.close()
     }
 }
+
+/**
+ * TODO: 需要修改录制逻辑
+ * 读取到流结尾 -> 判断主播是否停止直播 -> 是则视为这次直播结束，否则重新连接
+ */
