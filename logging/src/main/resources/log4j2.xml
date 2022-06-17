@@ -51,7 +51,7 @@
                     <IfLastModified age="180D"/>
                 </Delete>
             </DefaultRolloverStrategy>
-            <ThresholdFilter level="ALL" onMatch="ACCEPT" onMismatch="DENY"/>
+            <ThresholdFilter level="DEBUG" onMatch="ACCEPT" onMismatch="DENY"/>
         </RollingFile>
     </Appenders>
     <!--Loggers:定义日志级别和使用的Appenders -->
