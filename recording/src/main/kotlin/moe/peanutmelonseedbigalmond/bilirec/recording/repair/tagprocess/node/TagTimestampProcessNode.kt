@@ -1,20 +1,20 @@
-package moe.peanutmelonseedbigalmond.bilirec.recording.repair.context
+package moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node
 
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
 import moe.peanutmelonseedbigalmond.bilirec.logging.BaseLogging
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.BaseFlvTagProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
 
-class TagTimestampProcessChain(
-    private val logger:BaseLogging,
-):BaseFlvTagProcessChain() {
+class TagTimestampProcessNode(
+    private val logger: BaseLogging,
+) : BaseFlvTagProcessNode<Tag>() {
     @Volatile
     private var audioChunkTimestampDiff = -1
 
     @Volatile
     private var videoChunkTimestampDiff = -1
 
-    override fun proceed(tag: Tag): Tag? {
+    override fun proceed(chain: FlvTagProcessChain<Tag>, tag: Tag) {
         when (tag.getTagType()) {
             TagType.AUDIO -> {
                 if (audioChunkTimestampDiff <= 0) {
@@ -37,10 +37,6 @@ class TagTimestampProcessChain(
                 // Do nothing
             }
         }
-        return if (chain!=null){
-            chain!!.proceed(tag)
-        }else{
-            tag
-        }
+        chain.emit(tag)
     }
 }

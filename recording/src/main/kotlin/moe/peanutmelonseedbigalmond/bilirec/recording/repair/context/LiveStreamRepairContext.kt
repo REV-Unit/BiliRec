@@ -13,12 +13,12 @@ import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExitedEvent
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.BaseFlvTagProcessChain
-import okhttp3.internal.closeQuietly
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagDataProcessNode
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagTimestampProcessNode
 import org.greenrobot.eventbus.EventBus
 import java.io.ByteArrayOutputStream
 import java.io.Closeable
-import java.io.IOException
 import java.io.InputStream
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
@@ -50,7 +50,7 @@ class LiveStreamRepairContext(
 
     @Volatile
     private var flvWriter: FlvTagWriter? = null
-    private lateinit var processChain: BaseFlvTagProcessChain
+    private lateinit var processChain: FlvTagProcessChain<Tag>
     private var flvWriteJob: Job? = null
 
     @Volatile
@@ -59,10 +59,10 @@ class LiveStreamRepairContext(
     fun startAsync() {
         flvWriter = FlvTagWriter("$outputFileNamePrefix.flv")
         this.flvTagReader = FlvTagReader(inputStream)
-        processChain = BaseFlvTagProcessChain
-            .addChainNode(TagTimestampProcessChain(this.logger))
-            .addChainNode(TagDataProcessChain(this.logger))
-            .build()
+        processChain = FlvTagProcessChain<Tag>()
+            .addProcessNode(TagTimestampProcessNode(this.logger))
+            .addProcessNode(TagDataProcessNode(this.logger))
+            .collect(this::writeTag)
         this.flvWriteJob = createFlvWriteJob()
     }
 
@@ -83,8 +83,7 @@ class LiveStreamRepairContext(
             while (isActive) {
                 try {
                     val tag = flvTagReader?.readNextTagAsync() ?: break
-                    val newTag = processChain.proceed(tag)
-                    writeTag(newTag)
+                    processChain.proceed(tag)
                 } catch (_: CancellationException) {
 
                 } catch (e: Exception) {
