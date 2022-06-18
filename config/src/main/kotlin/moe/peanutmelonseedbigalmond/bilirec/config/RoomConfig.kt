@@ -27,4 +27,12 @@ class RoomConfig {
 
     @Volatile
     var title: String = ""
+
+    @Volatile
+    var recordMode: Int = RecordMode.STRAND
+
+    object RecordMode {
+        const val STRAND = 0
+        const val RAW = 1
+    }
 }
