@@ -13,7 +13,7 @@ import org.greenrobot.eventbus.ThreadMode
 import kotlin.coroutines.CoroutineContext
 
 class DanmakuRecordTask(
-    private val room: Room,
+     room: Room,
     coroutineContext: CoroutineContext = Dispatchers.IO
 ) : BaseRecordTask(room), CoroutineScope by CoroutineScope(coroutineContext) {
     @Volatile

@@ -1,85 +1,112 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.task.impl
 
+import kotlinx.coroutines.*
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
+import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
+import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExitedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
+import okhttp3.internal.closeQuietly
 import org.greenrobot.eventbus.EventBus
-import java.io.EOFException
-import java.io.FileOutputStream
-import java.io.InputStream
-import kotlin.concurrent.thread
+import java.io.File
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.coroutines.CoroutineContext
 
 /**
  *
  * 录制原始数据，不修复
  */
 class RawRecordTask(
-    private val inputStream: InputStream,
-    private val room: Room,
-    private val outputFileNamePrefix: String
-) : BaseRecordTask(room) {
-    @Volatile
-    private var writer: FileOutputStream? = null
+    room: Room,
+    coroutineContext: CoroutineContext = Dispatchers.IO
+) : BaseRecordTask(room), CoroutineScope by CoroutineScope(coroutineContext) {
+    private val startAndStopLock = ReentrantLock()
 
     @Volatile
-    private var worker: Worker? = null
-    private val writeLock = Object()
+    private var started = false
 
     @Volatile
     private var mClosed = false
-    override val closed: Boolean = mClosed
+    override val closed: Boolean
+        get() = mClosed
+
+    @Volatile
+    private var recordingJob: Job? = null
+    override fun close() {
+        startAndStopLock.lock()
+        if (closed) {
+            startAndStopLock.unlock()
+            return
+        }
+        mClosed = true
+        stopRecording()
+        cancel()
+        startAndStopLock.unlock()
+    }
+
     override fun prepare() {
 
     }
 
-    private inner class Worker : Runnable {
-        @Volatile
-        private var cancelled = false
-        override fun run() {
-            synchronized(writeLock) {
-                val buffer = ByteArray(1024 * 1024)
-                while (!cancelled) {
-                    try {
-                        val len = inputStream.read(buffer)
-                        if (len == -1) throw EOFException("录制流已到结尾")
-                        writer!!.write(buffer, 0, len)
-                    } catch (e: Exception) {
-                        EventBus.getDefault().post(RecordingThreadErrorEvent(this@RawRecordTask.room, e))
-                    }
-                }
-                EventBus.getDefault().post(RecordingThreadExitedEvent(room))
-            }
+    override fun startAsync(baseFileName: String) {
+        startAndStopLock.lock()
+        if (started) {
+            startAndStopLock.unlock()
+            return
         }
 
-        fun cancel() {
-            cancelled = true
+        runBlocking { createLiveStreamRepairContextAsync() }
+        if (this.recordingJob==null){
+            this.recordingJob=createRecordingJob(baseFileName)
         }
-    }
 
-    override fun startAsync(baseFileName:String) {
-        if (writer == null) {
-            writer = FileOutputStream("${outputFileNamePrefix}_raw.flv")
-        }
-        thread(name = "RawRecordTask - RoomId:${room.roomConfig.roomId}") {
-            worker = Worker()
-            worker!!.run()
-        }
+        this.recordingJob!!.start()
+        started=true
+        startAndStopLock.unlock()
     }
 
     override fun stopRecording() {
-
+        startAndStopLock.lock()
+        if (!started) {
+            startAndStopLock.unlock()
+            return
+        }
+        started = false
+        logger.info("停止接收直播流")
+        startAndStopLock.unlock()
+        EventBus.getDefault().post(RecordFileClosedEvent(this.room.roomConfig.roomId))
     }
 
-    override fun close() {
-        synchronized(writeLock) {
-            if (closed) return
-            writer?.close()
-            this.writer=null
-            worker?.cancel()
-            this.worker=null
-            inputStream.close()
-            mClosed = true
+    private fun createRecordingJob(baseFileName: String) = launch(
+        coroutineContext,
+        start = CoroutineStart.LAZY
+    ) {
+        val newFileName = File("${baseFileName}_raw.flv")
+        val directory = newFileName.parentFile
+        if (!directory.exists()) {
+            directory.mkdirs()
+        }
+
+        val fileOutputStream = newFileName.outputStream()
+        EventBus.getDefault().post(RecordFileOpenedEvent(roomId = room.roomConfig.roomId, baseFileName))
+        var len: Int
+        val buffer = ByteArray(4096)
+        while (isActive) {
+            try {
+                len = withContext(Dispatchers.IO) { liveStream.read(buffer) }
+                if (len == -1) break
+
+                withContext(Dispatchers.IO) { fileOutputStream.write(buffer, 0, len) }
+            } catch (_: CancellationException) {
+
+            } catch (e: Exception) {
+                EventBus.getDefault().post(RecordingThreadErrorEvent(room, e))
+            }
+        }
+        fileOutputStream.closeQuietly()
+        withContext(NonCancellable) {
+            EventBus.getDefault().post(RecordingThreadExitedEvent(room))
         }
     }
 }
