@@ -37,6 +37,6 @@ class TagTimestampProcessNode(
                 // Do nothing
             }
         }
-        chain.emit(tag)
+        next(chain,tag)
     }
 }

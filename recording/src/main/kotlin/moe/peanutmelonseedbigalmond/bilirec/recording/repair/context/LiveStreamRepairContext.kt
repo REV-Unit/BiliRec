@@ -83,7 +83,7 @@ class LiveStreamRepairContext(
             while (isActive) {
                 try {
                     val tag = flvTagReader?.readNextTagAsync() ?: break
-                    processChain.proceed(tag)
+                    processChain.startProceed(tag)
                 } catch (_: CancellationException) {
 
                 } catch (e: Exception) {

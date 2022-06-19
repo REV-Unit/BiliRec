@@ -5,11 +5,17 @@ import java.util.*
 
 class FlvTagProcessChain<R> {
     private lateinit var collectAction: (R) -> Unit
-    private val processNodes: LinkedList<BaseFlvTagProcessNode<R>> = LinkedList()
-    private lateinit var iterator: MutableIterator<BaseFlvTagProcessNode<R>>
+    private var chainFirstNode: BaseFlvTagProcessNode<R>? = null
+    private var chainLastNode: BaseFlvTagProcessNode<R>? = null
 
     fun addProcessNode(node: BaseFlvTagProcessNode<R>): FlvTagProcessChain<R> {
-        processNodes.add(node)
+        if (chainFirstNode == null) {
+            chainFirstNode = node
+            chainLastNode = node
+        } else {
+            chainLastNode?.tailNode = node
+            chainLastNode = node
+        }
         return this
     }
 
@@ -18,21 +24,22 @@ class FlvTagProcessChain<R> {
         return this
     }
 
-    fun proceed(obj: R) {
-        processNodes.first.proceed(this, obj)
-    }
-
-    fun emit(obj: R) {
-        ensureIteratorInitialized()
-        if (iterator.hasNext()) {
-            iterator.next().proceed(this, obj)
+    /**
+     * 将数据交给第一个节点，开始处理
+     * 如果没有处理节点，则直接从链上返回
+     */
+    fun startProceed(obj: R) {
+        if (chainFirstNode != null) {
+            chainFirstNode!!.proceed(this, obj)
         } else {
-            collectAction(obj)
+            emit(obj)
         }
     }
 
-    private fun ensureIteratorInitialized() {
-        if (this::iterator.isInitialized) return
-        iterator = processNodes.iterator()
+    /**
+     * 直接跳出处理链，数据不再往下一个节点传播
+     */
+    fun emit(obj: R) {
+        collectAction(obj)
     }
 }

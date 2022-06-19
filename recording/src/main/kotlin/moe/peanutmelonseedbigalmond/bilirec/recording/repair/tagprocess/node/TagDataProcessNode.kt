@@ -38,7 +38,7 @@ class TagDataProcessNode(private val logger:BaseLogging):BaseFlvTagProcessNode<T
                 // Do nothing
             }
         }
-        chain.emit(tag)
+        next(chain,tag)
     }
     private fun containsKey(tag: ScriptData,key:String): Boolean {
         if (tag.size < 2 || (tag[1] !is ScriptDataEcmaArray && tag[1] !is ScriptDataObject)) return false
