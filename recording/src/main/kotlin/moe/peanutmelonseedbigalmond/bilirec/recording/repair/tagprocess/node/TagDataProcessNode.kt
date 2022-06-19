@@ -32,6 +32,7 @@ class TagDataProcessNode(private val logger:BaseLogging):BaseFlvTagProcessNode<T
                         this["duration"] = ScriptDataNumber.assign()
                     }
                 }
+                scriptChunkRead=true
             }
             else -> {
                 // Do nothing
