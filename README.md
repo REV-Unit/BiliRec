@@ -126,6 +126,12 @@ version: 1
 
 - 官方封锁
 
+## 鸣谢
+
+本项目中的部分代码和逻辑参考了 [BililiveRecorder/BililiveRecorder](https://github.com/BililiveRecorder/BililiveRecorder) 
+
+在此表示感谢
+
 ## License
 
 Copyright (C) 2022 PeanutMelonSeedBigAlmond
