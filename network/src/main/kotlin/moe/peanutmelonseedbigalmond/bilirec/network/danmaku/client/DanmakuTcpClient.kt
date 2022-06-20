@@ -34,14 +34,22 @@ class DanmakuTcpClient(
     private var danmakuServerPort by Delegates.notNull<Int>()
     private lateinit var danmakuServerToken: String
 
+    companion object {
+        // 心跳包的间隔时间，默认为60秒
+        private const val HEARTBEAT_INTERVAL = 60 * 1000
+    }
+
     suspend fun connectAsync() {
-        withContext(coroutineContext){
+        withContext(coroutineContext) {
             if (connected) return@withContext
             if (socket == null) {
                 socket = Socket()
             }
             getDanmakuServerInfoAsync()
-            withContext(Dispatchers.IO) { socket?.connect(InetSocketAddress(danmakuAddress, danmakuServerPort), 6000) }
+            // 设置socket的超时时间，在两倍心跳包长度的时间内必定能收到或者发送数据
+            // 超过这个时间则认为网络超时
+            socket?.soTimeout = HEARTBEAT_INTERVAL * 2 + 1000
+            withContext(Dispatchers.IO) { socket?.connect(InetSocketAddress(danmakuAddress, danmakuServerPort), 5000) }
             this@DanmakuTcpClient.inputStream = withContext(Dispatchers.IO) { socket?.getInputStream() }
             this@DanmakuTcpClient.outputStream = withContext(Dispatchers.IO) { socket?.getOutputStream() }
             connected = true
@@ -133,7 +141,7 @@ class DanmakuTcpClient(
         return launch(start = CoroutineStart.LAZY, context = coroutineContext) {
             while (isActive) {
                 sendHeartBeatAsync()
-                delay(60 * 1000)
+                delay(HEARTBEAT_INTERVAL.toLong())
             }
         }
     }
