@@ -29,9 +29,9 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build with Gradle
-        run: ./gradlew clean ":app:shadowJar"
+        run: ./gradlew clean "shadowJar"
       - name: Upload Artifact
         uses: actions/upload-artifact@v2.2.0
         with:
-          name: BiliRec.${{ steps.current-time.outputs.formattedTime }}.jar
+          name: BiliRec.${{ steps.current-time.outputs.formattedTime }}-ci.jar
           path: build/libs/*.jar
