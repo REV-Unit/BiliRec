@@ -20,6 +20,7 @@ import java.time.OffsetDateTime
 import java.util.concurrent.locks.ReentrantLock
 import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.coroutines.CoroutineContext
+import kotlin.properties.ObservableProperty
 
 class Room(
     val roomConfig: RoomConfig,
@@ -35,12 +36,10 @@ class Room(
     @Volatile
     var living = false
         private set(value) {
-            if (value != field) {
-                if (value) {
-                    runBlocking { requestStartAsync() }
-                } else {
-                    runBlocking { requestStopAsync() }
-                }
+            if (value) {
+                runBlocking { requestStartAsync() }
+            } else {
+                runBlocking { requestStopAsync() }
             }
             field = value
         }

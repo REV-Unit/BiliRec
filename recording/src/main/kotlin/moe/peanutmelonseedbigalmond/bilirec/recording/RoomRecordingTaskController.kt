@@ -29,7 +29,8 @@ class RoomRecordingTaskController(
     private var danmakuRecordingTask: BaseRecordTask? = null
 
     @Volatile
-    private var started = false
+    var started = false
+        private set
 
     @Volatile
     private var closed = false
