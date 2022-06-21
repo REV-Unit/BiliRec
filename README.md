@@ -70,10 +70,10 @@ roomConfigs:
    filterLotteryDanmaku: true # 是否屏蔽抽奖弹幕，默认为true
    danmakuFilterRegex: # 需要屏蔽掉弹幕的正则表达式，和 filterLotteryDanmaku 相互独立，留空则表示不屏蔽任何弹幕
      - "红包"
-  # 视频录制模式，默认为0
-  # 0 标准模式，此时会自动修复时间戳
-  # 1 原始录制模式，不会对视频数据进行任何处理
-  recordMode: 0 
+   # 视频录制模式，默认为0
+   # 0 标准模式，此时会自动修复时间戳
+   # 1 原始录制模式，不会对视频数据进行任何处理
+   recordMode: 0 
 
 # 如果有多个直播间，可按照上面的格式进行填写，每个直播间的配置相互独立
 version: 1
