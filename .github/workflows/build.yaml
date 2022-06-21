@@ -1,4 +1,4 @@
-name: Koltin CI
+name: Kotlin CI
 
 on:
   push:
@@ -33,5 +33,5 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v2.2.0
         with:
-          name: BiliRec.${{ steps.current-time.outputs.formattedTime }}-ci.jar
+          name: BiliRec.${{ steps.current-time.outputs.formattedTime }}-ci
           path: build/libs/*.jar
