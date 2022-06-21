@@ -13,6 +13,7 @@ import java.time.Duration
 
 abstract class BaseRecordTask(protected val room: Room) : Closeable {
     private val qnMap = mapOf(
+        30000 to "杜比",
         20000 to "4K",
         10000 to "原画",
         401 to "蓝光（杜比）",
@@ -48,7 +49,7 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
     }
 
     // region 获取直播流
-    private fun getLiveStreamAddressAsync(qn: Int = 10000): Pair<String, Int> {
+    private fun getLiveStreamAddressAsync(qn: Int = 30000): Pair<String, Int> {
         val selectedQn: Int
         val codecItemResp = BiliApiClient.DEFAULT_CLIENT.getCodecItemInStreamUrl(room.roomConfig.roomId, qn)
         requireNotNull(codecItemResp) { "no supported stream url, qn: $qn" }
