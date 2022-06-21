@@ -26,10 +26,11 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
     @Volatile
     protected lateinit var liveStream: InputStream
 
-    abstract val closed:Boolean
+    abstract val closed: Boolean
     protected open val logger = LoggingFactory.getLogger(room.roomConfig.roomId, this)
     abstract fun prepare()
-    abstract fun startAsync(baseFileName:String)
+    abstract fun startAsync(baseFileName: String)
+
     // 结束录制，但是不结束任务
     abstract fun stopRecording()
 
@@ -49,7 +50,7 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
     }
 
     // region 获取直播流
-    private fun getLiveStreamAddressAsync(qn: Int = 30000): Pair<String, Int> {
+    private fun getLiveStreamAddressAsync(qn: Int = 10000): Pair<String, Int> {
         val selectedQn: Int
         val codecItemResp = BiliApiClient.DEFAULT_CLIENT.getCodecItemInStreamUrl(room.roomConfig.roomId, qn)
         requireNotNull(codecItemResp) { "no supported stream url, qn: $qn" }
