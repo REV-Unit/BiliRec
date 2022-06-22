@@ -10,6 +10,8 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.AudioData
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.ScriptData
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.VideoData
+import moe.peanutmelonseedbigalmond.bilirec.logging.BaseLogging
+import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import struct.JavaStruct
 import java.io.*
 import java.nio.ByteOrder
@@ -21,6 +23,7 @@ import kotlin.coroutines.CoroutineContext
  */
 class FlvTagReader(
     private val inputStream: InputStream,
+    private val logger: BaseLogging = LoggingFactory.getLogger()
 ) : Closeable {
     constructor(fileName: String) : this(FileInputStream(fileName))
 
@@ -51,7 +54,9 @@ class FlvTagReader(
         }
         return try {
             parseTagDataAsync(inputStream)
-        } catch (_: IOException) {
+        } catch (e: IOException) {
+            logger.warn("FlvTagReader: ${e.localizedMessage}")
+            logger.debug(e.stackTraceToString())
             null
         }
     }
