@@ -36,7 +36,7 @@ class StrandRecordTask(
             startAndStopLock.unlock()
             return
         }
-        runBlocking{ createLiveStreamRepairContextAsync() }
+        runBlocking(coroutineContext){ createLiveStreamRepairContextAsync() }
         repairContext = LiveStreamRepairContext(liveStream, room, baseFileName)
         repairContext!!.startAsync()
         started = true
