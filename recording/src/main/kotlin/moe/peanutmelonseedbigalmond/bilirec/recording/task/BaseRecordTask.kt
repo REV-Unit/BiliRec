@@ -2,6 +2,7 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.task
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
@@ -44,7 +45,9 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
                 logger.error("获取直播流出错：${e.localizedMessage}")
                 logger.debug(e.stackTraceToString())
                 logger.info("重新获取直播流")
-                createLiveStreamRepairContextAsync(true)
+                if (isActive) {
+                    createLiveStreamRepairContextAsync(true)
+                }
             }
         }
     }
