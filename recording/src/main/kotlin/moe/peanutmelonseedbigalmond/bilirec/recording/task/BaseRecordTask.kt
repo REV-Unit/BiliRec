@@ -39,7 +39,7 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
             try {
                 if (requireDelay) delay(1000)
                 val (fullUrl, _) = getLiveStreamAddressAsync()
-                liveStream = getLiveStreamAsync(fullUrl, Duration.ofSeconds(5))
+                liveStream = getLiveStreamAsync(fullUrl, Duration.ofSeconds(10))
             } catch (e: Exception) {
                 logger.error("获取直播流出错：${e.localizedMessage}")
                 logger.debug(e.stackTraceToString())
