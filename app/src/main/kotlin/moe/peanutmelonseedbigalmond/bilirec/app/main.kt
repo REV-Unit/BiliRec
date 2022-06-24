@@ -1,5 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.app
 
-fun main(args: Array<String>) {
-    CommandProcessor(args).process()
+import kotlinx.coroutines.coroutineScope
+
+suspend fun main(args: Array<String>) = coroutineScope{
+    CommandProcessor(args).processAsync()
 }

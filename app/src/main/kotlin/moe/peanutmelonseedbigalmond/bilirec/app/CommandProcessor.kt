@@ -33,7 +33,7 @@ class CommandProcessor(args: Array<String>) {
         }
     }
 
-    fun process() {
+    suspend fun processAsync() {
         if (cli.hasOption("h")) {
             helpFormatter.printHelp("bilirec", options)
             return
@@ -49,18 +49,18 @@ class CommandProcessor(args: Array<String>) {
         helpFormatter.printHelp("bilirec", options)
     }
 
-    private fun appStart(configRoot: ConfigRoot) = runBlocking {
+    private suspend fun appStart(configRoot: ConfigRoot) = coroutineScope {
         val rooms = configRoot.roomConfigs ?: emptyList()
         if (rooms.isEmpty()) {
             LoggingFactory.getLogger().warn("No rooms configured")
-            return@runBlocking
+            return@coroutineScope
         }
         for (roomConfig in rooms) {
             val room = Room(roomConfig, coroutineContext)
             Recording.INSTANCE.registerTask(room)
         }
 
-        Runtime.getRuntime().addShutdownHook(object :Thread(){
+        Runtime.getRuntime().addShutdownHook(object : Thread() {
             override fun run() {
                 Recording.INSTANCE.unregisterAllTasks()
                 LoggingFactory.getLogger().info("System Exited")
