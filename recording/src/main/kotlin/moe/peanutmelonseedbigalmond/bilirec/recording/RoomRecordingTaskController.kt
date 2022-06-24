@@ -1,6 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
@@ -37,7 +38,7 @@ class RoomRecordingTaskController(
 
     suspend fun prepareAsync() {
         EventBus.getDefault().register(this)
-        withContext(Dispatchers.IO) {
+        coroutineScope {
             if (danmakuRecordingTask != null) {
                 danmakuRecordingTask!!.closeQuietly()
                 danmakuRecordingTask = null
@@ -72,11 +73,11 @@ class RoomRecordingTaskController(
     }
 
     suspend fun requestStopAsync() {
-        withContext(Dispatchers.IO) {
+        coroutineScope {
             startAndStopLock.lock()
             if (!started) {
                 startAndStopLock.unlock()
-                return@withContext
+                return@coroutineScope
             }
             try {
                 videoRecordingTask?.stopRecording()
@@ -89,11 +90,11 @@ class RoomRecordingTaskController(
     }
 
     suspend fun requestStartAsync() {
-        withContext(Dispatchers.IO) {
+        coroutineScope {
             startAndStopLock.lock()
             if (started) {
                 startAndStopLock.unlock()
-                return@withContext
+                return@coroutineScope
             }
             try {
                 val startTime = OffsetDateTime.now()

@@ -79,7 +79,7 @@ class RawRecordTask(
     }
 
     private fun createRecordingJob(baseFileName: String) = launch(
-        coroutineContext,
+        Dispatchers.IO,
         start = CoroutineStart.LAZY
     ) {
         val newFileName = File("${baseFileName}_raw.flv")

@@ -1,9 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.reader
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.exception.FLVDataException
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
@@ -43,16 +40,16 @@ class FlvTagReader(
         }
     }
 
-    suspend fun readNextTagAsync(): Tag? {
-        if (closed) return null
+    suspend fun readNextTagAsync(): Tag? = coroutineScope{
+        if (closed) return@coroutineScope null
         if (!this@FlvTagReader.fileHeader) {
             if (parseFileHeaderAsync(inputStream)) {
                 this@FlvTagReader.fileHeader = true
             } else {
-                return null
+                return@coroutineScope null
             }
         }
-        return try {
+        return@coroutineScope try {
             parseTagDataAsync(inputStream)
         } catch (e: IOException) {
             logger.warn("FlvTagReader: ${e.localizedMessage}")
@@ -65,16 +62,16 @@ class FlvTagReader(
     /**
      * 读取 9 字节的 flv 文件头
      */
-    private suspend fun parseFileHeaderAsync(stream: InputStream): Boolean {
+    private suspend fun parseFileHeaderAsync(stream: InputStream): Boolean = coroutineScope{
         val buffer = withContext(Dispatchers.IO) { stream.readNBytes(9) }
-        if (buffer.size < 9) return false
+        if (buffer.size < 9) return@coroutineScope false
         if (String(buffer, 0, 3, Charsets.UTF_8) != "FLV" || buffer[3] != 1.toByte()) {
             throw FLVDataException("Data is not FLV")
         }
         if (buffer[5] != 0.toByte() || buffer[6] != 0.toByte() || buffer[7] != 0.toByte() || buffer[8] != 9.toByte()) {
             throw FLVDataException("Not supported FLV format")
         }
-        return true
+        return@coroutineScope true
     }
 
     /**
@@ -84,7 +81,7 @@ class FlvTagReader(
      * @throws IOException
      */
     @Throws(IOException::class)
-    private suspend fun parseTagDataAsync(inputStream: InputStream): Tag? {
+    private suspend fun parseTagDataAsync(inputStream: InputStream): Tag? = coroutineScope{
         withContext(Dispatchers.IO) { inputStream.skipNBytes(4) }// 跳过第一个无意义的 Tag
         val data = withContext(Dispatchers.IO) { inputStream.readNBytes(11) }
         if (data.size < 11) { // 读取的字节不足 Tag header 长度，说明最后以一个 Tag 不完整，忽略
@@ -93,7 +90,7 @@ class FlvTagReader(
         val tag = Tag()
         JavaStruct.unpack(tag, data, ByteOrder.BIG_ENDIAN)
 
-        if (tag.getTagType() == TagType.UNKNOWN) return null
+        if (tag.getTagType() == TagType.UNKNOWN) return@coroutineScope null
 
         when (tag.getTagType()) {
             TagType.AUDIO -> {
@@ -115,7 +112,7 @@ class FlvTagReader(
         }
 
         tag.tagIndex = tagIndex.getAndIncrement()
-        return tag
+        return@coroutineScope tag
     }
     // endregion
 }

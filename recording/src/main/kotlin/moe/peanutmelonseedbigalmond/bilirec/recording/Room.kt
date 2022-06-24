@@ -112,16 +112,16 @@ class Room(
 
     // region start and stop
     private suspend fun requestStartAsync() {
-        withContext(Dispatchers.IO) {
+        coroutineScope {
             startAndStopLock.lock()
             if (closed) {
                 startAndStopLock.unlock()
-                return@withContext
+                return@coroutineScope
             }
             requireRestart = true
             while (isActive) {
                 try {
-                    runBlocking { recordingTaskController.requestStartAsync() }
+                    recordingTaskController.requestStartAsync()
                     break
                 } catch (e: Exception) {
                     logger.error("启动录制任务失败，1秒后重试")
