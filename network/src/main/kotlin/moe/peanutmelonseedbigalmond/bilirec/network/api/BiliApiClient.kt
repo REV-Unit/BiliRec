@@ -2,7 +2,6 @@ package moe.peanutmelonseedbigalmond.bilirec.network.api
 
 import com.haroldadmin.cnradapter.NetworkResponse
 import com.haroldadmin.cnradapter.NetworkResponseAdapterFactory
-import kotlinx.coroutines.runBlocking
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.DanmakuServerResponse
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.LiveStreamUrlResponse
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.RoomAnchorInfoResponse
@@ -52,24 +51,20 @@ class BiliApiClient(private val client: OkHttpClient, biliLiveHost: String) {
         .baseUrl(biliLiveHost)
         .build().create(BiliApi::class.java)
 
-    fun getRoomInfo(roomId: Long): RoomInfoResponse = runBlocking {
-        return@runBlocking makeSureResponseSuccess(biliApiImpl.getRoomInfoAsync(roomId)).data
-    }
+    suspend fun getRoomInfo(roomId: Long): RoomInfoResponse =
+        makeSureResponseSuccess(biliApiImpl.getRoomInfoAsync(roomId)).data
 
-    fun getRoomAnchorInfo(roomId: Long): RoomAnchorInfoResponse = runBlocking {
-        return@runBlocking makeSureResponseSuccess(biliApiImpl.getRoomAnchorInfoAsync(roomId)).data
-    }
+    suspend fun getRoomAnchorInfo(roomId: Long): RoomAnchorInfoResponse =
+        makeSureResponseSuccess(biliApiImpl.getRoomAnchorInfoAsync(roomId)).data
 
-    fun getFlvLiveStreamUrlInfo(roomId: Long, quality: Int): LiveStreamUrlResponse = runBlocking {
-        return@runBlocking makeSureResponseSuccess(biliApiImpl.getFlvLiveStreamUrlAsync(roomId, quality)).data
-    }
-    fun getHlsLiveStreamUrlInfo(roomId: Long, quality: Int): String = runBlocking {
-        return@runBlocking makeSureResponseSuccess(biliApiImpl.getHlsLiveStreamUrlAsync(roomId, quality)).data
-    }
+    suspend fun getFlvLiveStreamUrlInfo(roomId: Long, quality: Int): LiveStreamUrlResponse =
+        makeSureResponseSuccess(biliApiImpl.getFlvLiveStreamUrlAsync(roomId, quality)).data
 
-    fun getDanmakuServer(roomId: Long): DanmakuServerResponse = runBlocking {
-        return@runBlocking makeSureResponseSuccess(biliApiImpl.getDanmakuServerAsync(roomId)).data
-    }
+    suspend fun getHlsLiveStreamUrlInfo(roomId: Long, quality: Int): String =
+        makeSureResponseSuccess(biliApiImpl.getHlsLiveStreamUrlAsync(roomId, quality)).data
+
+    suspend fun getDanmakuServer(roomId: Long): DanmakuServerResponse =
+        makeSureResponseSuccess(biliApiImpl.getDanmakuServerAsync(roomId)).data
 
     fun getResponse(url: String, timeout: Duration = DEFAULT_TIMEOUT_SPAN): Response {
         val c = client.newBuilder()

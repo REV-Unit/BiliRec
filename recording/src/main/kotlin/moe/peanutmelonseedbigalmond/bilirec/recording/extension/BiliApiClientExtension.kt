@@ -3,7 +3,7 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.extension
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.LiveStreamUrlResponse
 
-internal fun BiliApiClient.getCodecItemInStreamUrl(
+internal suspend fun BiliApiClient.getCodecItemInStreamUrlAsync(
     roomId: Long,
     qn: Int
 ): LiveStreamUrlResponse.CodecItem? {

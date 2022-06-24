@@ -4,7 +4,7 @@ import kotlinx.coroutines.*
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
-import moe.peanutmelonseedbigalmond.bilirec.recording.extension.getCodecItemInStreamUrl
+import moe.peanutmelonseedbigalmond.bilirec.recording.extension.getCodecItemInStreamUrlAsync
 import java.io.Closeable
 import java.io.InputStream
 import java.time.Duration
@@ -50,9 +50,9 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
     }
 
     // region 获取直播流
-    private fun getLiveStreamAddressAsync(qn: Int = 10000): Pair<String, Int> {
+    private suspend fun getLiveStreamAddressAsync(qn: Int = 10000): Pair<String, Int> {
         val selectedQn: Int
-        val codecItemResp = BiliApiClient.DEFAULT_CLIENT.getCodecItemInStreamUrl(room.roomConfig.roomId, qn)
+        val codecItemResp = BiliApiClient.DEFAULT_CLIENT.getCodecItemInStreamUrlAsync(room.roomConfig.roomId, qn)
         requireNotNull(codecItemResp) { "no supported stream url, qn: $qn" }
 
         if (!codecItemResp.acceptQn.contains(qn)) {
@@ -76,12 +76,12 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
         return Pair(fullUrl, codecItemResp.currentQn)
     }
 
-    private fun getLiveStreamAsync(fullUrl: String, timeout: Duration): InputStream {
+    private suspend fun getLiveStreamAsync(fullUrl: String, timeout: Duration): InputStream = coroutineScope {
         val resp = BiliApiClient.DEFAULT_CLIENT.getResponse(fullUrl, timeout)
         if (resp.code == 200) {
             requireNotNull(resp.body)
             logger.info("开始接收直播流")
-            return resp.body!!.byteStream()
+            return@coroutineScope resp.body!!.byteStream()
         }
         resp.close()
         throw Exception("get live stream failed, code: ${resp.code}")

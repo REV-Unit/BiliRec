@@ -83,7 +83,7 @@ class Room(
             recordingTaskController.prepareAsync()
             while (isActive) {
                 try {
-                    refreshRoomInfo()
+                    refreshRoomInfoAsync()
                     logger.info("获取直播间信息成功：username=$userName, title=$title, parentAreaName=$parentAreaName, childAreaName=$childAreaName, living=$living")
                     break
                 } catch (_: CancellationException) {
@@ -146,17 +146,17 @@ class Room(
     // endregion
 
     // region 获取信息
-    private fun refreshRoomInfo() {
-        getAnchorInfo()
-        getRoomInfo()
+    private suspend fun refreshRoomInfoAsync() {
+        getAnchorInfoAsync()
+        getRoomInfoAsync()
     }
 
-    private fun getAnchorInfo() {
+    private suspend fun getAnchorInfoAsync() {
         val info = BiliApiClient.DEFAULT_CLIENT.getRoomAnchorInfo(this.roomConfig.roomId)
         this.userName = info.info.username
     }
 
-    private fun getRoomInfo() {
+    private suspend fun getRoomInfoAsync() {
         val roomInfo = BiliApiClient.DEFAULT_CLIENT.getRoomInfo(this.roomConfig.roomId)
         this.roomConfig.roomId = roomInfo.roomId
         this.shortId = roomInfo.shortRoomId
@@ -184,7 +184,7 @@ class Room(
                 is Exception -> {
                     logger.error("直播流修复时出现异常：${event.extra.localizedMessage}")
                     logger.debug(event.extra.stackTraceToString())
-                    this@Room.living=false
+                    this@Room.living = false
                 }
             }
         }
@@ -193,13 +193,13 @@ class Room(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onRecordingThreadExited(event: RecordingThreadExitedEvent) {
         if (event.room.roomConfig.roomId == this.roomConfig.roomId) {
-            runBlocking{ this@Room.recordingTaskController.requestStopAsync() }
+            runBlocking { this@Room.recordingTaskController.requestStopAsync() }
             if (!requireRestart) return
             // 重试
             launch {
-                while (isActive){
+                while (isActive) {
                     try {
-                        getRoomInfo()
+                        getRoomInfoAsync()
                         break
                     } catch (e: Exception) {
                         logger.error("重试启动直播流时出现异常：${e.localizedMessage}")
@@ -217,7 +217,7 @@ class Room(
         return launch(context = Dispatchers.IO, start = CoroutineStart.LAZY) {
             while (isActive) {
                 try {
-                    refreshRoomInfo()
+                    refreshRoomInfoAsync()
                 } catch (_: CancellationException) {
 
                 } catch (e: Exception) {
@@ -238,10 +238,12 @@ class Room(
             logger.info("直播开始")
             logger.debug(event.danmakuModel.toString())
             if (event.danmakuModel.liveTime == 0L) {
-                try {
-                    getRoomInfo()
-                } catch (e: Exception) {
-                    logger.debug("刷新直播间信息时出现异常：${e.stackTraceToString()}")
+                launch {
+                    try {
+                        getRoomInfoAsync()
+                    } catch (e: Exception) {
+                        logger.debug("刷新直播间信息时出现异常：${e.stackTraceToString()}")
+                    }
                 }
             }
         }
