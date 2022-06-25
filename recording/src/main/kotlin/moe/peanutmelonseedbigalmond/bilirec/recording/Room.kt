@@ -112,24 +112,22 @@ class Room(
 
     // region start and stop
     private suspend fun requestStartAsync() {
-        coroutineScope {
-            startAndStopLock.lock()
-            if (closed) {
+        startAndStopLock.lock()
+        if (closed) {
+            startAndStopLock.unlock()
+            return
+        }
+        requireRestart = true
+        while (isActive) {
+            try {
+                recordingTaskController.requestStartAsync()
+                break
+            } catch (e: Exception) {
+                logger.error("启动录制任务失败，1秒后重试")
+                logger.debug(e.stackTraceToString())
+                delay(1000)
+            } finally {
                 startAndStopLock.unlock()
-                return@coroutineScope
-            }
-            requireRestart = true
-            while (isActive) {
-                try {
-                    recordingTaskController.requestStartAsync()
-                    break
-                } catch (e: Exception) {
-                    logger.error("启动录制任务失败，1秒后重试")
-                    logger.debug(e.stackTraceToString())
-                    delay(1000)
-                } finally {
-                    startAndStopLock.unlock()
-                }
             }
         }
     }

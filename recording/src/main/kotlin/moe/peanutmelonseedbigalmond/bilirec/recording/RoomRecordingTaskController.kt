@@ -1,7 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
@@ -38,17 +37,15 @@ class RoomRecordingTaskController(
 
     suspend fun prepareAsync() {
         EventBus.getDefault().register(this)
-        coroutineScope {
-            if (danmakuRecordingTask != null) {
-                danmakuRecordingTask!!.closeQuietly()
-                danmakuRecordingTask = null
-            }
-            danmakuRecordingTask = DanmakuRecordTask(this@RoomRecordingTaskController.room)
-            danmakuRecordingTask!!.prepare()
-            if (this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) {
-                videoRecordingTask = RecordTaskFactory.getRecordTask(this@RoomRecordingTaskController.room)
-                videoRecordingTask!!.prepare()
-            }
+        if (danmakuRecordingTask != null) {
+            danmakuRecordingTask!!.closeQuietly()
+            danmakuRecordingTask = null
+        }
+        danmakuRecordingTask = DanmakuRecordTask(this@RoomRecordingTaskController.room)
+        danmakuRecordingTask!!.prepare()
+        if (this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) {
+            videoRecordingTask = RecordTaskFactory.getRecordTask(this@RoomRecordingTaskController.room)
+            videoRecordingTask!!.prepare()
         }
     }
 
@@ -73,44 +70,40 @@ class RoomRecordingTaskController(
     }
 
     suspend fun requestStopAsync() {
-        coroutineScope {
-            startAndStopLock.lock()
-            if (!started) {
-                startAndStopLock.unlock()
-                return@coroutineScope
-            }
-            try {
-                videoRecordingTask?.stopRecording()
-                danmakuRecordingTask!!.stopRecording()
-                started = false
-            } finally {
-                startAndStopLock.unlock()
-            }
+        startAndStopLock.lock()
+        if (!started) {
+            startAndStopLock.unlock()
+            return
+        }
+        try {
+            videoRecordingTask?.stopRecording()
+            danmakuRecordingTask!!.stopRecording()
+            started = false
+        } finally {
+            startAndStopLock.unlock()
         }
     }
 
     suspend fun requestStartAsync() {
-        coroutineScope {
-            startAndStopLock.lock()
-            if (started) {
-                startAndStopLock.unlock()
-                return@coroutineScope
-            }
-            try {
-                val startTime = OffsetDateTime.now()
-                val baseDir = File(
-                    removeIllegalChar(
-                        "${this@RoomRecordingTaskController.room.roomConfig.roomId}-${this@RoomRecordingTaskController.room.userName}"
-                    )
+        startAndStopLock.lock()
+        if (started) {
+            startAndStopLock.unlock()
+            return
+        }
+        try {
+            val startTime = OffsetDateTime.now()
+            val baseDir = File(
+                removeIllegalChar(
+                    "${this@RoomRecordingTaskController.room.roomConfig.roomId}-${this@RoomRecordingTaskController.room.userName}"
                 )
-                if (!baseDir.exists()) baseDir.mkdirs()
-                val baseFile =
-                    File(baseDir, removeIllegalChar(generateFileName(this@RoomRecordingTaskController.room, startTime)))
-                videoRecordingTask!!.startAsync(baseFile.canonicalPath)
-                started = true
-            } finally {
-                startAndStopLock.unlock()
-            }
+            )
+            if (!baseDir.exists()) baseDir.mkdirs()
+            val baseFile =
+                File(baseDir, removeIllegalChar(generateFileName(this@RoomRecordingTaskController.room, startTime)))
+            videoRecordingTask!!.startAsync(baseFile.canonicalPath)
+            started = true
+        } finally {
+            startAndStopLock.unlock()
         }
     }
 

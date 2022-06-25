@@ -7,6 +7,7 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.Recording
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import org.apache.commons.cli.*
 import java.io.File
+import kotlin.coroutines.coroutineContext
 
 class CommandProcessor(args: Array<String>) {
     private lateinit var cli: CommandLine
@@ -49,11 +50,11 @@ class CommandProcessor(args: Array<String>) {
         helpFormatter.printHelp("bilirec", options)
     }
 
-    private suspend fun appStart(configRoot: ConfigRoot) = coroutineScope {
+    private suspend fun appStart(configRoot: ConfigRoot) {
         val rooms = configRoot.roomConfigs ?: emptyList()
         if (rooms.isEmpty()) {
             LoggingFactory.getLogger().warn("No rooms configured")
-            return@coroutineScope
+            return
         }
         for (roomConfig in rooms) {
             val room = Room(roomConfig, coroutineContext)

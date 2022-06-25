@@ -8,6 +8,7 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.extension.getCodecItemInSt
 import java.io.Closeable
 import java.io.InputStream
 import java.time.Duration
+import kotlin.coroutines.coroutineContext
 
 abstract class BaseRecordTask(protected val room: Room) : Closeable {
     private val qnMap = mapOf(
@@ -33,18 +34,16 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
     abstract fun stopRecording()
 
     protected open suspend fun createLiveStreamRepairContextAsync(requireDelay: Boolean = false) {
-        coroutineScope {
+        while (coroutineContext.isActive){
             try {
                 if (requireDelay) delay(1000)
                 val (fullUrl, _) = getLiveStreamAddressAsync()
                 liveStream = getLiveStreamAsync(fullUrl, Duration.ofSeconds(10))
+                break
             } catch (e: Exception) {
                 logger.error("获取直播流出错：${e.localizedMessage}")
                 logger.debug(e.stackTraceToString())
                 logger.info("重新获取直播流")
-                if (isActive) {
-                    createLiveStreamRepairContextAsync(true)
-                }
             }
         }
     }
@@ -76,12 +75,12 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
         return Pair(fullUrl, codecItemResp.currentQn)
     }
 
-    private suspend fun getLiveStreamAsync(fullUrl: String, timeout: Duration): InputStream = coroutineScope {
+    private suspend fun getLiveStreamAsync(fullUrl: String, timeout: Duration):InputStream  {
         val resp = BiliApiClient.DEFAULT_CLIENT.getResponse(fullUrl, timeout)
         if (resp.code == 200) {
             requireNotNull(resp.body)
             logger.info("开始接收直播流")
-            return@coroutineScope resp.body!!.byteStream()
+            return resp.body!!.byteStream()
         }
         resp.close()
         throw Exception("get live stream failed, code: ${resp.code}")
