@@ -1,15 +1,19 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.coroutines.coroutineContext
 
 class Recording private constructor(private val innerMap: ConcurrentHashMap<Long, Room>) :
     Map<Long, Room> by innerMap {
 
-    fun registerTask(room: Room, forceUpdate: Boolean = false) {
+    suspend fun registerTaskAsync(room: Room, forceUpdate: Boolean = false):Unit = coroutineScope {
         if (forceUpdate) {
             if (innerMap.contains(room.roomConfig.roomId)) {
-                unregisterTask(room.roomConfig.roomId)
-                registerTask(room, false)
+                unregisterTaskAsync(room.roomConfig.roomId)
+                registerTaskAsync(room, false)
             }
         } else {
             if (!innerMap.contains(room.roomConfig.roomId)) {
@@ -19,13 +23,17 @@ class Recording private constructor(private val innerMap: ConcurrentHashMap<Long
         }
     }
 
-    fun unregisterTask(roomId: Long) {
-        innerMap.remove(roomId)?.close()
+    suspend fun unregisterTaskAsync(roomId: Long) {
+        coroutineScope {
+            launch {
+                innerMap.remove(roomId)?.close()
+            }
+        }
     }
 
-    fun unregisterAllTasks() {
+    suspend fun unregisterAllTasksAsync() {
         for (key in getAllTasks()) {
-            unregisterTask(key)
+            unregisterTaskAsync(key)
         }
     }
 

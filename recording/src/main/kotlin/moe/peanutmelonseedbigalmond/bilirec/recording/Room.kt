@@ -37,9 +37,9 @@ class Room(
     var living = false
         private set(value) {
             if (value) {
-                runBlocking { requestStartAsync() }
+                runBlocking(coroutineContext) { requestStartAsync() }
             } else {
-                runBlocking { requestStopAsync() }
+                runBlocking(coroutineContext) { requestStopAsync() }
             }
             field = value
         }
@@ -77,7 +77,7 @@ class Room(
 
     fun prepareAsync(): Job {
         EventBus.getDefault().register(this)
-        return launch(Dispatchers.IO) {
+        return launch {
             updateRoomInfoJob = createUpdateRoomInfoJob()
             recordingTaskController = RoomRecordingTaskController(this@Room)
             recordingTaskController.prepareAsync()
@@ -102,7 +102,7 @@ class Room(
     override fun close() {
         if (closed) return
         closed = true
-        runBlocking {
+        runBlocking(coroutineContext) {
             requestStopAsync()
             updateRoomInfoJob.cancelAndJoin()
         }
