@@ -1,8 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.*
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import moe.peanutmelonseedbigalmond.bilirec.RoomInfoRefreshEvent
 import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
@@ -14,13 +12,8 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import java.io.Closeable
-import java.io.EOFException
-import java.io.File
-import java.time.OffsetDateTime
 import java.util.concurrent.locks.ReentrantLock
-import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.coroutines.CoroutineContext
-import kotlin.properties.ObservableProperty
 
 class Room(
     val roomConfig: RoomConfig,

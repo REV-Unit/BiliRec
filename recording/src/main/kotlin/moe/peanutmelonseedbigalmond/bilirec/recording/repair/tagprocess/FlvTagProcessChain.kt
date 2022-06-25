@@ -1,7 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess
 
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.BaseFlvTagProcessNode
-import java.util.*
 
 class FlvTagProcessChain<R> {
     private lateinit var collectAction: (R) -> Unit

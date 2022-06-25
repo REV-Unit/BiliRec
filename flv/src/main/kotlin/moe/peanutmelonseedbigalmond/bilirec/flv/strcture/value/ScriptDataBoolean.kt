@@ -4,13 +4,13 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
 import java.io.OutputStream
 import kotlin.properties.Delegates
 
-class ScriptDataBoolean:BaseScriptDataValue() {
+class ScriptDataBoolean : BaseScriptDataValue() {
     override val type: ScriptDataType
         get() = ScriptDataType.BOOLEAN
     var value by Delegates.notNull<Boolean>()
 
     override fun writeTo(stream: OutputStream) {
-        val data= byteArrayOf(
+        val data = byteArrayOf(
             type.value.toByte(),
             (if (value) 1 else 0).toByte()
         )

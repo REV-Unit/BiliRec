@@ -10,7 +10,7 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.ScriptDataObject
 import moe.peanutmelonseedbigalmond.bilirec.logging.BaseLogging
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
 
-class TagDataProcessNode(private val logger:BaseLogging):BaseFlvTagProcessNode<Tag>() {
+class TagDataProcessNode(private val logger: BaseLogging) : BaseFlvTagProcessNode<Tag>() {
     private var scriptChunkRead = false
 
     override fun proceed(chain: FlvTagProcessChain<Tag>, tag: Tag) {
@@ -27,20 +27,21 @@ class TagDataProcessNode(private val logger:BaseLogging):BaseFlvTagProcessNode<T
                 with((tag.data as ScriptData)[1] as ScriptDataEcmaArray) {
                     this["keyframes"] = KeyframesObject()
                 }
-                if (!containsKey(tag.data as ScriptData,"duration")){
+                if (!containsKey(tag.data as ScriptData, "duration")) {
                     with((tag.data as ScriptData)[1] as ScriptDataEcmaArray) {
                         this["duration"] = ScriptDataNumber.assign()
                     }
                 }
-                scriptChunkRead=true
+                scriptChunkRead = true
             }
             else -> {
                 // Do nothing
             }
         }
-        next(chain,tag)
+        next(chain, tag)
     }
-    private fun containsKey(tag: ScriptData,key:String): Boolean {
+
+    private fun containsKey(tag: ScriptData, key: String): Boolean {
         if (tag.size < 2 || (tag[1] !is ScriptDataEcmaArray && tag[1] !is ScriptDataObject)) return false
         val array = if (tag[1] is ScriptDataObject) {
             (tag[1] as ScriptDataObject).toScriptDataEcmaArray()

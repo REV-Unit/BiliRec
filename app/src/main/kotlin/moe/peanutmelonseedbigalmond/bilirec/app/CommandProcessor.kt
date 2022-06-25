@@ -1,6 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.app
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.runBlocking
 import moe.peanutmelonseedbigalmond.bilirec.config.ConfigRoot
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Recording

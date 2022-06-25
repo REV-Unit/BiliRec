@@ -11,15 +11,15 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.*
 
-class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> =LinkedList()) : BaseTagData() {
+class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> = LinkedList()) : BaseTagData() {
     override lateinit var binaryData: ByteArray
 
     init {
-        val bos=ByteArrayOutputStream()
+        val bos = ByteArrayOutputStream()
         for (value in list) {
             value.writeTo(bos)
         }
-        this.binaryData=bos.toByteArray()
+        this.binaryData = bos.toByteArray()
     }
 
     val binaryLength: Long

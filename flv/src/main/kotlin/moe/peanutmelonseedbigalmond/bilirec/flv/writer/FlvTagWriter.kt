@@ -61,10 +61,10 @@ class FlvTagWriter(private val randomAccessFile: RandomAccessFile) : AutoCloseab
 
     fun getFileLength(): Long = synchronized(writeLock) { this.randomAccessFile.length() }
 
-    fun flush()= synchronized(writeLock){this.randomAccessFile.fd.sync()}
+    fun flush() = synchronized(writeLock) { this.randomAccessFile.fd.sync() }
 
     override fun close() {
-        synchronized(writeLock){
+        synchronized(writeLock) {
             if (closed) return
             closed = true
             randomAccessFile.close()

@@ -5,7 +5,7 @@
 ## 特点
 
 - 自动监控并录制直播
-  
+
   相比传统使用屏幕录制的方式，在更小的资源占用情况下能获得更好的录制效果
 
 - 纯 Kotlin 编写，没有原生依赖，不需要任何第三方软件依赖
@@ -34,17 +34,17 @@ java --add-opens java.xml/com.sun.xml.internal.stream.writers=ALL-UNNAMED --add-
 
 1. 因 Java9 及之后对反射操作有限制，所以需要添加 JVM 启动参数
 
-    `--add-opens java.xml/com.sun.xml.internal.stream.writers=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED`
+   `--add-opens java.xml/com.sun.xml.internal.stream.writers=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED`
 
 2. 控制台会打印日志，如果需要开启颜色显示。则还需要添加 JVM 参数
 
-    `-Dlog4j.skipJansi=false`
+   `-Dlog4j.skipJansi=false`
 
 3. **必须**指定工作目录，方式是使用 `-c` 参数
 
 4. 可使用下面的命令查看程序参数
 
-    `java -jar <jar>`
+   `java -jar <jar>`
 
 ### 配置
 
@@ -117,7 +117,7 @@ version: 1
 并且，该项目随时可能由于包括但不限于以下原因中的的一个或多个而终止
 
 - 高考
- 
+
 - 考研
 
 - 电脑坏了
@@ -128,7 +128,7 @@ version: 1
 
 ## 鸣谢
 
-本项目中的部分代码和逻辑参考了 [BililiveRecorder/BililiveRecorder](https://github.com/BililiveRecorder/BililiveRecorder) 
+本项目中的部分代码和逻辑参考了 [BililiveRecorder/BililiveRecorder](https://github.com/BililiveRecorder/BililiveRecorder)
 
 在此表示感谢
 
@@ -136,9 +136,8 @@ version: 1
 
 Copyright (C) 2022 PeanutMelonSeedBigAlmond
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU Affero General Public License Version 3 as published by
-the Free Software Foundation.
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU Affero General Public
+License Version 3 as published by the Free Software Foundation.
 
-You should have received a copy of the GNU Affero General Public License
-along with this program.  If not, see <https://www.gnu.org/licenses/>.
+You should have received a copy of the GNU Affero General Public License along with this program. If not,
+see <https://www.gnu.org/licenses/>.

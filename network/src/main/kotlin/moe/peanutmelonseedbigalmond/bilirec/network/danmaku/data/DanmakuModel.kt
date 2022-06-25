@@ -127,7 +127,7 @@ data class DanmakuModel constructor(
      *
      * 如果这一项为0，才开始获取直播地址
      */
-    var liveTime:Long=0L,
+    var liveTime: Long = 0L,
     /**
      * 原始数据
      */
@@ -154,8 +154,8 @@ data class DanmakuModel constructor(
             when (danmakuCommand) {
                 DanmakuCommand.LIVE_START -> {
                     model.roomId = obj.getLong("roomid")
-                    if (obj.has("live_time")){
-                        model.liveTime=obj.getLong("live_time")
+                    if (obj.has("live_time")) {
+                        model.liveTime = obj.getLong("live_time")
                     }
                 }
                 DanmakuCommand.LIVE_END ->

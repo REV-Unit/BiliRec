@@ -1,6 +1,9 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.task.impl
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.runBlocking
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
@@ -11,7 +14,7 @@ import java.util.concurrent.locks.ReentrantLock
 import kotlin.coroutines.CoroutineContext
 
 class StrandRecordTask(
-     room: Room,
+    room: Room,
     coroutineContext: CoroutineContext = Dispatchers.IO
 ) : BaseRecordTask(room), CoroutineScope by CoroutineScope(coroutineContext) {
     private val startAndStopLock = ReentrantLock()
@@ -36,7 +39,7 @@ class StrandRecordTask(
             startAndStopLock.unlock()
             return
         }
-        runBlocking(coroutineContext){ createLiveStreamRepairContextAsync() }
+        runBlocking(coroutineContext) { createLiveStreamRepairContextAsync() }
         repairContext = LiveStreamRepairContext(liveStream, room, baseFileName)
         repairContext!!.startAsync()
         started = true

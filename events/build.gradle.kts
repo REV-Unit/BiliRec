@@ -3,6 +3,6 @@ plugins {
     kotlin("jvm")
 }
 
-dependencies{
+dependencies {
     api("org.greenrobot:eventbus-java:3.3.1")
 }

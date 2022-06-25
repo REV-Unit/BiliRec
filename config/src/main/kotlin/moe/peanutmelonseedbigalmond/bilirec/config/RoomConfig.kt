@@ -2,7 +2,7 @@ package moe.peanutmelonseedbigalmond.bilirec.config
 
 class RoomConfig {
     @Volatile
-    var roomId: Long=0
+    var roomId: Long = 0
 
     @Volatile
     var enableAutoRecord: Boolean = true
@@ -20,10 +20,10 @@ class RoomConfig {
     var recordSuperChatData: Boolean = true
 
     @Volatile
-    var filterLotteryDanmaku:Boolean=true
+    var filterLotteryDanmaku: Boolean = true
 
     @Volatile
-    var danmakuFilterRegex:ArrayList<String> = arrayListOf()
+    var danmakuFilterRegex: ArrayList<String> = arrayListOf()
 
     @Volatile
     var title: String = ""

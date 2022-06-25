@@ -57,12 +57,12 @@ class RawRecordTask(
         }
 
         runBlocking(coroutineContext) { createLiveStreamRepairContextAsync() }
-        if (this.recordingJob==null){
-            this.recordingJob=createRecordingJob(baseFileName)
+        if (this.recordingJob == null) {
+            this.recordingJob = createRecordingJob(baseFileName)
         }
 
         this.recordingJob!!.start()
-        started=true
+        started = true
         startAndStopLock.unlock()
     }
 

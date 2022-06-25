@@ -10,12 +10,12 @@ sealed class DanmakuClientEvent {
 
     data class ClientClosed(
         val client: DanmakuTcpClient,
-        val roomId:Long,
-    ):DanmakuClientEvent()
+        val roomId: Long,
+    ) : DanmakuClientEvent()
 
     data class ClientFailure(
         val client: DanmakuTcpClient,
         val roomId: Long,
-        val throwable:Throwable,
-    ):DanmakuClientEvent()
+        val throwable: Throwable,
+    ) : DanmakuClientEvent()
 }

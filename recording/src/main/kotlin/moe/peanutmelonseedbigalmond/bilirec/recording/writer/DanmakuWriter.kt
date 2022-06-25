@@ -131,7 +131,7 @@ class DanmakuWriter(
                     danmakuModel.rawObject?.get("data")?.toString() ?: ""
                 )
             }
-            this.writer.writeCharacters(removeInvalidXmlChars(danmakuModel.commentText?:""))
+            this.writer.writeCharacters(removeInvalidXmlChars(danmakuModel.commentText ?: ""))
             this.writer.writeEndElement()
         }
         applyFlush()

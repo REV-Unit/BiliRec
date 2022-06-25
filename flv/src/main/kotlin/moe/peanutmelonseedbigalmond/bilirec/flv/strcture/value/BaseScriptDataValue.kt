@@ -5,5 +5,5 @@ import java.io.OutputStream
 
 abstract class BaseScriptDataValue {
     abstract val type: ScriptDataType
-    abstract fun writeTo(stream:OutputStream)
+    abstract fun writeTo(stream: OutputStream)
 }

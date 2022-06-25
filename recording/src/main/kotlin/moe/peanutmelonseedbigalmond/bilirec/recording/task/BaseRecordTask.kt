@@ -1,6 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.task
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
@@ -34,7 +35,7 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
     abstract fun stopRecording()
 
     protected open suspend fun createLiveStreamRepairContextAsync(requireDelay: Boolean = false) {
-        while (coroutineContext.isActive){
+        while (coroutineContext.isActive) {
             try {
                 if (requireDelay) delay(1000)
                 val (fullUrl, _) = getLiveStreamAddressAsync()
@@ -75,7 +76,7 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
         return Pair(fullUrl, codecItemResp.currentQn)
     }
 
-    private suspend fun getLiveStreamAsync(fullUrl: String, timeout: Duration):InputStream  {
+    private suspend fun getLiveStreamAsync(fullUrl: String, timeout: Duration): InputStream {
         val resp = BiliApiClient.DEFAULT_CLIENT.getResponse(fullUrl, timeout)
         if (resp.code == 200) {
             requireNotNull(resp.body)

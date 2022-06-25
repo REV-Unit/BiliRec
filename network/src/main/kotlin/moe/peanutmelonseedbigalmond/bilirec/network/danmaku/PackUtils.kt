@@ -33,14 +33,14 @@ internal object PackUtils {
 
     private fun parseDecompressedDanmakuData(byteArray: ByteArray): ArrayList<DanmakuModel> {
         val res = arrayListOf<DanmakuModel>()
-        val stream=ByteArrayInputStream(byteArray)
+        val stream = ByteArrayInputStream(byteArray)
         stream.available()
-        while (stream.available()>0){
+        while (stream.available() > 0) {
             val data = DanmakuMessageData()
-            var bytes=stream.readNBytes(16)
+            var bytes = stream.readNBytes(16)
             JavaStruct.unpack(data, bytes, ByteOrder.BIG_ENDIAN)
-            val bodyLength = data.packetLength-data.headerLength
-            bytes=stream.readNBytes(bodyLength)
+            val bodyLength = data.packetLength - data.headerLength
+            bytes = stream.readNBytes(bodyLength)
             val body = bytes.toString(Charsets.UTF_8)
             res.add(DanmakuModel.fromJson(body))
         }

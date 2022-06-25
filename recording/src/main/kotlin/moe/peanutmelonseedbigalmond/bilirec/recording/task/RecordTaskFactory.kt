@@ -5,7 +5,6 @@ import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.RawRecordTask
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.StrandRecordTask
-import java.lang.IllegalArgumentException
 import kotlin.coroutines.CoroutineContext
 
 object RecordTaskFactory {

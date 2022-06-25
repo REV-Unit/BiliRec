@@ -40,14 +40,17 @@ class Tag : Writeable {
     fun setTagType(type: TagType) {
         mTagType = type.value.toByte()
     }
+
     fun getDataSize(): Int = byteArrayOf(0, *mDataSize).toInt()
     fun setDataSize(size: Int) {
         mDataSize = size.toByteArray().takeLast(3).toByteArray()
     }
+
     fun getStreamId(): Int = byteArrayOf(0, *mStreamId).toInt()
     fun setStreamId(streamId: Int) {
         mStreamId = streamId.toByteArray().takeLast(3).toByteArray()
     }
+
     fun getTimeStamp(): Int = byteArrayOf(mTimestamp[3], mTimestamp[0], mTimestamp[1], mTimestamp[2]).toInt()
     fun setTimeStamp(timestamp: Int) {
         mTimestamp = timestampToByteArray(timestamp)

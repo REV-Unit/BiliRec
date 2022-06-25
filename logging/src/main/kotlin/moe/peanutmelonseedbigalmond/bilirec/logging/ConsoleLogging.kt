@@ -38,12 +38,13 @@ class ConsoleLogging(private val roomId: Long? = null, cls: Any? = null) : BaseL
         afterLogging()
     }
 
-    private fun beforeLogging(){
-        if (roomId!=null){
-            ThreadContext.put("roomId",roomId.toString())
+    private fun beforeLogging() {
+        if (roomId != null) {
+            ThreadContext.put("roomId", roomId.toString())
         }
     }
-    private fun afterLogging(){
+
+    private fun afterLogging() {
         ThreadContext.remove("roomId")
     }
 }

@@ -6,7 +6,7 @@ plugins {
     id("com.github.johnrengelman.shadow") version "7.1.0"
 }
 
-allprojects{
+allprojects {
     group = "moe.peanutmelonseedbigalmond"
     version = "1.0-SNAPSHOT"
     repositories {
@@ -40,6 +40,6 @@ tasks.withType<Jar> {
     }
 }
 
-tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>{
+tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
     archiveBaseName.set("BiliRec")
 }

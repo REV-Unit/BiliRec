@@ -4,12 +4,13 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
 import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
 import java.io.OutputStream
 
-open class ScriptDataObject(private val map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHashMap()) : BaseScriptDataValue(),
+open class ScriptDataObject(private val map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHashMap()) :
+    BaseScriptDataValue(),
     Map<String, BaseScriptDataValue> by map {
     override val type: ScriptDataType
         get() = ScriptDataType.OBJECT
 
-    fun toScriptDataEcmaArray():ScriptDataEcmaArray=ScriptDataEcmaArray(this.map)
+    fun toScriptDataEcmaArray(): ScriptDataEcmaArray = ScriptDataEcmaArray(this.map)
 
     override fun writeTo(stream: OutputStream) {
         stream.write(byteArrayOf(type.value.toByte()))

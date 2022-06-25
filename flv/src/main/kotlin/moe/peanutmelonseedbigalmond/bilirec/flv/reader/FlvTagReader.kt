@@ -1,6 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.reader
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.exception.FLVDataException
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
@@ -13,7 +14,6 @@ import struct.JavaStruct
 import java.io.*
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.coroutines.CoroutineContext
 
 /**
  * [flv 结构解析](https://zhuanlan.zhihu.com/p/83346973)

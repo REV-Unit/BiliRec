@@ -24,7 +24,7 @@ abstract class DanmakuEventListener {
      * @return Boolean
      * 当返回值为 true 时，表示消息已经被消费，不会触发其余回调
      */
-    abstract fun onAllDanmakuReceived(client: DanmakuTcpClient, roomId: Long, model: DanmakuModel):Boolean
+    abstract fun onAllDanmakuReceived(client: DanmakuTcpClient, roomId: Long, model: DanmakuModel): Boolean
 
-    open fun onOthersDanmakuReceived(client: DanmakuTcpClient, roomId: Long, model: DanmakuModel){}
+    open fun onOthersDanmakuReceived(client: DanmakuTcpClient, roomId: Long, model: DanmakuModel) {}
 }

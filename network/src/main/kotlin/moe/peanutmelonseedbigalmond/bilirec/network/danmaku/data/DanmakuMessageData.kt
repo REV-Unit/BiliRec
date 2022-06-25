@@ -21,5 +21,5 @@ class DanmakuMessageData {
     var magic: Int = 1
 
     @StructField(order = 5)
-    var body:ByteArray= byteArrayOf()
+    var body: ByteArray = byteArrayOf()
 }

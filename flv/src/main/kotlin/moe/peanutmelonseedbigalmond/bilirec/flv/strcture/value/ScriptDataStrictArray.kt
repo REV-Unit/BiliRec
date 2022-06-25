@@ -21,7 +21,7 @@ class ScriptDataStrictArray(
 
     fun add(data: BaseScriptDataValue) = arrayList.add(data)
 
-    fun removeLast()=arrayList.removeLast()
+    fun removeLast() = arrayList.removeLast()
 
     override fun toString(): String {
         return "$type, count=$size"

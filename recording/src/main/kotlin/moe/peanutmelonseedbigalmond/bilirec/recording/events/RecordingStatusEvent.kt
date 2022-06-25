@@ -1,6 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.events
 
-class RecordingStatusEvent{
+class RecordingStatusEvent {
     var inputVideoByteCount: Long = 0
     var inputAudioByteCount: Long = 0
 

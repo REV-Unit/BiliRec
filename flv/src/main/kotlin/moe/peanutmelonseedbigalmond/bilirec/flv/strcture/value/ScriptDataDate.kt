@@ -23,8 +23,8 @@ class ScriptDataDate() : BaseScriptDataValue() {
     }
 
     override fun writeTo(stream: OutputStream) {
-        val offsetMinutesBasedUTC=value.offset.totalSeconds/60
-        val timestamp=value.toInstant().toEpochMilli().toDouble()
+        val offsetMinutesBasedUTC = value.offset.totalSeconds / 60
+        val timestamp = value.toInstant().toEpochMilli().toDouble()
         stream.write(byteArrayOf(type.value.toByte()))
         stream.write(timestamp.toByteArray())
         stream.write(offsetMinutesBasedUTC.toShort().toByteArray())

@@ -31,7 +31,7 @@ enum class DanmakuCommand(val command: String) {
     // 其余的
     OTHERS("OTHERS");
 
-    companion object{
+    companion object {
         fun parse(command: String): DanmakuCommand =
             values().find { it.command == command } ?: OTHERS
     }
