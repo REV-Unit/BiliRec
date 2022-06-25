@@ -70,6 +70,10 @@ class LiveStreamRepairContext(
         synchronized(writeLock) {
             if (closed) return
             closed = true
+            runBlocking(coroutineContext) {
+                this@LiveStreamRepairContext.flvWriteJob?.cancelAndJoin()
+                this@LiveStreamRepairContext.flvWriteJob=null
+            }
             this.flvTagReader?.close()
             this.flvTagReader = null
             this.flvWriter?.close()
