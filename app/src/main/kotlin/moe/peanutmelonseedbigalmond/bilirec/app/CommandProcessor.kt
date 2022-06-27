@@ -9,8 +9,7 @@ import org.apache.commons.cli.*
 import java.io.File
 import kotlin.coroutines.coroutineContext
 
-class CommandProcessor(args: Array<String>) {
-    private lateinit var cli: CommandLine
+object CommandProcessor {
     private val cliParser = DefaultParser()
     private val helpFormatter = HelpFormatter()
     val options = Options().also {
@@ -26,15 +25,13 @@ class CommandProcessor(args: Array<String>) {
         )
     }
 
-    init {
-        try {
-            cli = cliParser.parse(options, args)
+    suspend fun processAsync(args: Array<String>) {
+        val cli = try {
+            cliParser.parse(options, args)
         } catch (e: ParseException) {
             helpFormatter.printHelp("bilirec", options)
+            return
         }
-    }
-
-    suspend fun processAsync() {
         if (cli.hasOption("h")) {
             helpFormatter.printHelp("bilirec", options)
             return
