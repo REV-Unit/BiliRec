@@ -1,8 +1,10 @@
 plugins {
     kotlin("jvm")
     `java-library`
+    id("org.springframework.boot")
+    id("io.spring.dependency-management")
+    kotlin("plugin.spring")
 }
 dependencies {
-    implementation("org.apache.logging.log4j:log4j-core:2.17.1")
-    implementation("org.apache.logging.log4j:log4j-api:2.17.1")
+    implementation("org.springframework.boot:spring-boot-starter-log4j2")
 }

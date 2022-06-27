@@ -21,7 +21,7 @@ import java.util.concurrent.locks.ReentrantLock
 class RoomRecordingTaskController(
     private val room: Room,
 ) : Closeable {
-    private val logger = LoggingFactory.getLogger(this.room.roomConfig.roomId, this::class.java)
+    private val logger = LoggingFactory.getLogger(this.room.roomConfig.roomId, this)
     private val startAndStopLock = ReentrantLock()
 
     @Volatile

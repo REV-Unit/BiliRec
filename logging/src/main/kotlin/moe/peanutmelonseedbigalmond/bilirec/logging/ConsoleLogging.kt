@@ -6,7 +6,7 @@ import org.apache.logging.log4j.ThreadContext
 
 class ConsoleLogging(private val roomId: Long? = null, cls: Any? = null) : BaseLogging() {
     private var logger: Logger =
-        if (cls == null) LogManager.getLogger(LogManager.ROOT_LOGGER_NAME) else LogManager.getLogger(cls::class.java)
+        if (cls == null) LogManager.getLogger(this::class.java) else LogManager.getLogger(cls::class.java)
 
     override fun trace(msg: String) {
         beforeLogging()

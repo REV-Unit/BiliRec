@@ -61,9 +61,13 @@
         <Logger name="org.apache.logging.log4j" level="ERROR" additivity="true">
             <AppenderRef ref="RollingFile"/>
         </Logger>
+        <Logger name="moe.peanutmelonseedbigalmond" level="ALL" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="RollingFile"/>
+        </Logger>
         <!--Root:日志默认打印到控制台 -->
         <!--level日志级别: ALL < TRACE < DEBUG < INFO < WARN < ERROR < FATAL < OFF -->
-        <Root level="ALL">
+        <Root level="OFF">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="RollingFile"/>
         </Root>

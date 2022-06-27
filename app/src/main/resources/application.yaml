@@ -1,2 +1,6 @@
 server:
   port: 8082
+
+# include log configuration
+logging:
+  config: classpath:log4j2.xml

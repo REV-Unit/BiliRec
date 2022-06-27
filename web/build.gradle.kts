@@ -11,5 +11,7 @@ tasks.withType<org.springframework.boot.gradle.tasks.bundling.BootJar>{
 }
 
 dependencies {
-	implementation("org.springframework.boot:spring-boot-starter-web")
+	implementation("org.springframework.boot:spring-boot-starter-web"){
+		exclude(group="org.springframework.boot",module="spring-boot-starter-logging")
+	}
 }
