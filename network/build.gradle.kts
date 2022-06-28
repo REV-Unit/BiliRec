@@ -1,6 +1,9 @@
-plugins {
-    `java-library`
-    kotlin("jvm")
+tasks.bootJar{
+    enabled=false
+}
+
+tasks.jar{
+    enabled=true
 }
 
 dependencies {
@@ -14,8 +17,4 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation(project(":events"))
-}
-
-tasks.getByName<Test>("test") {
-    useJUnitPlatform()
 }

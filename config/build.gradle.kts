@@ -1,6 +1,9 @@
-plugins {
-    `java-library`
-    kotlin("jvm")
+tasks.bootJar{
+    enabled=false
+}
+
+tasks.jar{
+    enabled=true
 }
 
 dependencies {

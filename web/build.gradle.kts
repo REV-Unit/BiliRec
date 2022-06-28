@@ -1,13 +1,9 @@
-plugins {
-	`java-library`
-	kotlin("jvm")
-	id("org.springframework.boot")
-	id("io.spring.dependency-management")
-	kotlin("plugin.spring")
+tasks.bootJar{
+	enabled=false
 }
 
-tasks.withType<org.springframework.boot.gradle.tasks.bundling.BootJar>{
-	enabled=false
+tasks.jar{
+	enabled=true
 }
 
 dependencies {

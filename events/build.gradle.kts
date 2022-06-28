@@ -1,8 +1,11 @@
-plugins {
-    `java-library`
-    kotlin("jvm")
+tasks.bootJar{
+    enabled=false
+}
+
+tasks.jar{
+    enabled=true
 }
 
 dependencies {
-    api("org.greenrobot:eventbus-java:3.3.1")
+
 }
