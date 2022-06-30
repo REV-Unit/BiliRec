@@ -84,6 +84,7 @@ class LiveStreamRepairContext(
 
     private fun createFlvWriteJob(): Job {
         return launch {
+            logger.info("开始接收直播流")
             while (isActive) {
                 try {
                     val tag = flvTagReader?.readNextTagAsync() ?: break

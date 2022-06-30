@@ -80,7 +80,6 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
         val resp = BiliApiClient.DEFAULT_CLIENT.getResponseAsync(fullUrl, timeout)
         if (resp.code == 200) {
             requireNotNull(resp.body)
-            logger.info("开始接收直播流")
             return resp.body!!.byteStream()
         }
         resp.close()
