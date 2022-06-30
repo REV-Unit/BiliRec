@@ -2,6 +2,8 @@ package moe.peanutmelonseedbigalmond.bilirec.network.api
 
 import com.haroldadmin.cnradapter.NetworkResponse
 import com.haroldadmin.cnradapter.NetworkResponseAdapterFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.DanmakuServerResponse
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.LiveStreamUrlResponse
 import moe.peanutmelonseedbigalmond.bilirec.network.api.response.RoomAnchorInfoResponse
@@ -66,7 +68,7 @@ class BiliApiClient(private val client: OkHttpClient, biliLiveHost: String) {
     suspend fun getDanmakuServer(roomId: Long): DanmakuServerResponse =
         makeSureResponseSuccess(biliApiImpl.getDanmakuServerAsync(roomId)).data
 
-    fun getResponse(url: String, timeout: Duration = DEFAULT_TIMEOUT_SPAN): Response {
+    suspend fun getResponseAsync(url: String, timeout: Duration = DEFAULT_TIMEOUT_SPAN): Response {
         val c = client.newBuilder()
             .readTimeout(timeout)
             .writeTimeout(timeout)
@@ -76,7 +78,7 @@ class BiliApiClient(private val client: OkHttpClient, biliLiveHost: String) {
         val req = Request.Builder()
             .url(url)
             .get().build()
-        return c.newCall(req).execute()
+        return withContext(Dispatchers.IO){ c.newCall(req).execute() }
     }
 
     private fun <T : Any> makeSureResponseSuccess(response: NetworkResponse<T, Any>): T {
