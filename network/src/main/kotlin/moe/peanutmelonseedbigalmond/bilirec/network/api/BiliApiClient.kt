@@ -68,11 +68,16 @@ class BiliApiClient(private val client: OkHttpClient, biliLiveHost: String) {
     suspend fun getDanmakuServer(roomId: Long): DanmakuServerResponse =
         makeSureResponseSuccess(biliApiImpl.getDanmakuServerAsync(roomId)).data
 
-    suspend fun getResponseAsync(url: String, timeout: Duration = DEFAULT_TIMEOUT_SPAN): Response {
+    suspend fun getResponseAsync(
+        url: String,
+        readTimeout:Duration = DEFAULT_TIMEOUT_SPAN,
+        writeTimeOut:Duration = DEFAULT_TIMEOUT_SPAN,
+        connectTimeout: Duration = DEFAULT_TIMEOUT_SPAN
+    ): Response {
         val c = client.newBuilder()
-            .readTimeout(timeout)
-            .writeTimeout(timeout)
-            .connectTimeout(timeout)
+            .readTimeout(readTimeout)
+            .writeTimeout(writeTimeOut)
+            .connectTimeout(connectTimeout)
             .build()
 
         val req = Request.Builder()

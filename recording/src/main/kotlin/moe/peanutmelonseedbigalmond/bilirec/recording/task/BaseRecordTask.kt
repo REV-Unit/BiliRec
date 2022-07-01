@@ -76,8 +76,8 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
         return Pair(fullUrl, codecItemResp.currentQn)
     }
 
-    private suspend fun getLiveStreamAsync(fullUrl: String, timeout: Duration): InputStream {
-        val resp = BiliApiClient.DEFAULT_CLIENT.getResponseAsync(fullUrl, timeout)
+    private suspend fun getLiveStreamAsync(fullUrl: String, readTimeout: Duration): InputStream {
+        val resp = BiliApiClient.DEFAULT_CLIENT.getResponseAsync(fullUrl, readTimeout = readTimeout)
         if (resp.code == 200) {
             requireNotNull(resp.body)
             return resp.body!!.byteStream()
