@@ -43,7 +43,13 @@ class FlvTagReader(
     suspend fun readNextTagAsync(): Tag? {
         if (closed) return null
         if (!this@FlvTagReader.fileHeader) {
-            if (parseFileHeaderAsync(inputStream)) {
+            val t = try {
+                parseFileHeaderAsync(inputStream)
+            } catch (e: Exception) {
+                logger.debug(e.localizedMessage)
+                false
+            }
+            if (t) {
                 this@FlvTagReader.fileHeader = true
             } else {
                 return null
