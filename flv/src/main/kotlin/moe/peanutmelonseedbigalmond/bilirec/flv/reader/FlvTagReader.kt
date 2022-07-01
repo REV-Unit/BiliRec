@@ -1,6 +1,9 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.reader
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.exception.FLVDataException
@@ -26,17 +29,21 @@ class FlvTagReader(
 
     private val tagIndex = AtomicLong(0)
 
-    private val readLock = Object()
+    private val readLock = Mutex()
 
     @Volatile
     private var closed = false
     private var fileHeader = false
 
     override fun close() {
-        synchronized(readLock) {
-            if (closed) return
-            closed = true
-            inputStream.close()
+        runBlocking {
+            readLock.withLock {
+                if (closed) {
+                    return@withLock
+                }
+                closed = true
+                inputStream.close()
+            }
         }
     }
 
@@ -69,15 +76,17 @@ class FlvTagReader(
      * 读取 9 字节的 flv 文件头
      */
     private suspend fun parseFileHeaderAsync(stream: InputStream): Boolean {
-        val buffer = withContext(Dispatchers.IO) { stream.readNBytes(9) }
-        if (buffer.size < 9) return false
-        if (String(buffer, 0, 3, Charsets.UTF_8) != "FLV" || buffer[3] != 1.toByte()) {
-            throw FLVDataException("Data is not FLV")
+        readLock.withLock {
+            val buffer = withContext(Dispatchers.IO) { stream.readNBytes(9) }
+            if (buffer.size < 9) return false
+            if (String(buffer, 0, 3, Charsets.UTF_8) != "FLV" || buffer[3] != 1.toByte()) {
+                throw FLVDataException("Data is not FLV")
+            }
+            if (buffer[5] != 0.toByte() || buffer[6] != 0.toByte() || buffer[7] != 0.toByte() || buffer[8] != 9.toByte()) {
+                throw FLVDataException("Not supported FLV format")
+            }
+            return true
         }
-        if (buffer[5] != 0.toByte() || buffer[6] != 0.toByte() || buffer[7] != 0.toByte() || buffer[8] != 9.toByte()) {
-            throw FLVDataException("Not supported FLV format")
-        }
-        return true
     }
 
     /**
@@ -88,37 +97,39 @@ class FlvTagReader(
      */
     @Throws(IOException::class)
     private suspend fun parseTagDataAsync(inputStream: InputStream): Tag? {
-        withContext(Dispatchers.IO) { inputStream.skipNBytes(4) }// 跳过第一个无意义的 Tag
-        val data = withContext(Dispatchers.IO) { inputStream.readNBytes(11) }
-        if (data.size < 11) { // 读取的字节不足 Tag header 长度，说明最后以一个 Tag 不完整，忽略
-            throw EOFException("流已经读取到末尾")
+        readLock.withLock {
+            withContext(Dispatchers.IO) { inputStream.skipNBytes(4) }// 跳过第一个无意义的 Tag
+            val data = withContext(Dispatchers.IO) { inputStream.readNBytes(11) }
+            if (data.size < 11) { // 读取的字节不足 Tag header 长度，说明最后以一个 Tag 不完整，忽略
+                throw EOFException("流已经读取到末尾")
+            }
+            val tag = Tag()
+            JavaStruct.unpack(tag, data, ByteOrder.BIG_ENDIAN)
+
+            if (tag.getTagType() == TagType.UNKNOWN) return null
+
+            when (tag.getTagType()) {
+                TagType.AUDIO -> {
+                    val bArr = withContext(Dispatchers.IO) { inputStream.readNBytes(tag.getDataSize()) }
+                    val body = AudioData.fromBytes(bArr)
+                    tag.data = body
+                }
+                TagType.VIDEO -> {
+                    val bArray = withContext(Dispatchers.IO) { inputStream.readNBytes(tag.getDataSize()) }
+                    val body = VideoData.fromBytes(bArray)
+                    tag.data = body
+                }
+                TagType.SCRIPT -> {
+                    val bytes = withContext(Dispatchers.IO) { inputStream.readNBytes(tag.getDataSize()) }
+                    val body = ScriptData.fromBytes(bytes)
+                    tag.data = body
+                }
+                else -> {} // Do nothing
+            }
+
+            tag.tagIndex = tagIndex.getAndIncrement()
+            return tag
         }
-        val tag = Tag()
-        JavaStruct.unpack(tag, data, ByteOrder.BIG_ENDIAN)
-
-        if (tag.getTagType() == TagType.UNKNOWN) return null
-
-        when (tag.getTagType()) {
-            TagType.AUDIO -> {
-                val bArr = withContext(Dispatchers.IO) { inputStream.readNBytes(tag.getDataSize()) }
-                val body = AudioData.fromBytes(bArr)
-                tag.data = body
-            }
-            TagType.VIDEO -> {
-                val bArray = withContext(Dispatchers.IO) { inputStream.readNBytes(tag.getDataSize()) }
-                val body = VideoData.fromBytes(bArray)
-                tag.data = body
-            }
-            TagType.SCRIPT -> {
-                val bytes = withContext(Dispatchers.IO) { inputStream.readNBytes(tag.getDataSize()) }
-                val body = ScriptData.fromBytes(bytes)
-                tag.data = body
-            }
-            else -> {} // Do nothing
-        }
-
-        tag.tagIndex = tagIndex.getAndIncrement()
-        return tag
     }
     // endregion
 }
