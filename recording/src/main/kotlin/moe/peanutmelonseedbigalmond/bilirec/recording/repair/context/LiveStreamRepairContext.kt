@@ -58,7 +58,7 @@ class LiveStreamRepairContext(
 
     fun startAsync() {
         flvWriter = FlvTagWriter("$outputFileNamePrefix.flv")
-        this.flvTagReader = FlvTagReader(inputStream)
+        this.flvTagReader = FlvTagReader(inputStream,this.logger)
         processChain = FlvTagProcessChain<Tag>()
             .addProcessNode(TagTimestampProcessNode(this.logger))
             .addProcessNode(TagDataProcessNode(this.logger))
