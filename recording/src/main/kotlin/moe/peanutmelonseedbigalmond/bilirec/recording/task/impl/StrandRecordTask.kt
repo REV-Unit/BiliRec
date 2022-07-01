@@ -4,20 +4,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.context.LiveStreamRepairContext
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
 import org.greenrobot.eventbus.EventBus
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.coroutines.CoroutineContext
 
 class StrandRecordTask(
     room: Room,
     coroutineContext: CoroutineContext = Dispatchers.IO
 ) : BaseRecordTask(room), CoroutineScope by CoroutineScope(coroutineContext) {
-    private val startAndStopLock = ReentrantLock()
+    private val startAndStopLock = Mutex()
 
     @Volatile
     private var started = false
@@ -34,42 +35,39 @@ class StrandRecordTask(
     }
 
     override fun startAsync(baseFileName: String) {
-        startAndStopLock.lock()
-        if (started) {
-            startAndStopLock.unlock()
-            return
+        runBlocking(coroutineContext) {
+            startAndStopLock.withLock {
+                if (started) return@withLock
+                createLiveStreamRepairContextAsync()
+                repairContext = LiveStreamRepairContext(liveStream, room, baseFileName)
+                repairContext!!.startAsync()
+                started = true
+                EventBus.getDefault().post(RecordFileOpenedEvent(this@StrandRecordTask.room.roomConfig.roomId, baseFileName))
+            }
         }
-        runBlocking(coroutineContext) { createLiveStreamRepairContextAsync() }
-        repairContext = LiveStreamRepairContext(liveStream, room, baseFileName)
-        repairContext!!.startAsync()
-        started = true
-        startAndStopLock.unlock()
-        EventBus.getDefault().post(RecordFileOpenedEvent(this.room.roomConfig.roomId, baseFileName))
     }
 
     override fun stopRecording() {
-        startAndStopLock.lock()
-        if (!started) {
-            startAndStopLock.unlock()
-            return
+        runBlocking(coroutineContext) {
+            startAndStopLock.withLock{
+                if (!started) return@withLock
+                started = false
+                logger.info("停止接收直播流")
+                repairContext?.close()
+                repairContext = null
+                EventBus.getDefault().post(RecordFileClosedEvent(this@StrandRecordTask.room.roomConfig.roomId))
+            }
         }
-        started = false
-        logger.info("停止接收直播流")
-        repairContext?.close()
-        repairContext = null
-        startAndStopLock.unlock()
-        EventBus.getDefault().post(RecordFileClosedEvent(this.room.roomConfig.roomId))
     }
 
     override fun close() {
-        startAndStopLock.lock()
-        if (closed) {
-            startAndStopLock.unlock()
-            return
+        runBlocking {
+            startAndStopLock.withLock{
+                if (closed)return@withLock
+                mClosed = true
+                stopRecording()
+                this@StrandRecordTask.cancel()
+            }
         }
-        mClosed = true
-        stopRecording()
-        cancel()
-        startAndStopLock.unlock()
     }
 }

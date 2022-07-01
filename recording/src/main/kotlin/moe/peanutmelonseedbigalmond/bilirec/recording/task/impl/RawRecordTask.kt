@@ -1,6 +1,8 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.task.impl
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
@@ -10,7 +12,6 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
 import okhttp3.internal.closeQuietly
 import org.greenrobot.eventbus.EventBus
 import java.io.File
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -21,7 +22,7 @@ class RawRecordTask(
     room: Room,
     coroutineContext: CoroutineContext = Dispatchers.IO
 ) : BaseRecordTask(room), CoroutineScope by CoroutineScope(coroutineContext) {
-    private val startAndStopLock = ReentrantLock()
+    private val startAndStopLock = Mutex()
 
     @Volatile
     private var started = false
@@ -34,15 +35,14 @@ class RawRecordTask(
     @Volatile
     private var recordingJob: Job? = null
     override fun close() {
-        startAndStopLock.lock()
-        if (closed) {
-            startAndStopLock.unlock()
-            return
+        runBlocking {
+            startAndStopLock.withLock {
+                if (closed)return@withLock
+                mClosed = true
+                stopRecording()
+                this@RawRecordTask.cancel()
+            }
         }
-        mClosed = true
-        stopRecording()
-        cancel()
-        startAndStopLock.unlock()
     }
 
     override fun prepare() {
@@ -50,32 +50,29 @@ class RawRecordTask(
     }
 
     override fun startAsync(baseFileName: String) {
-        startAndStopLock.lock()
-        if (started) {
-            startAndStopLock.unlock()
-            return
-        }
+        runBlocking(coroutineContext) {
+            startAndStopLock.withLock{
+                if (started) return@withLock
+                createLiveStreamRepairContextAsync()
+                if (this@RawRecordTask.recordingJob == null) {
+                    this@RawRecordTask.recordingJob = createRecordingJob(baseFileName)
+                }
 
-        runBlocking(coroutineContext) { createLiveStreamRepairContextAsync() }
-        if (this.recordingJob == null) {
-            this.recordingJob = createRecordingJob(baseFileName)
+                this@RawRecordTask.recordingJob!!.start()
+                started = true
+            }
         }
-
-        this.recordingJob!!.start()
-        started = true
-        startAndStopLock.unlock()
     }
 
     override fun stopRecording() {
-        startAndStopLock.lock()
-        if (!started) {
-            startAndStopLock.unlock()
-            return
+        runBlocking(coroutineContext) {
+            startAndStopLock.withLock {
+                if (!started) return@withLock
+                started = false
+                logger.info("停止接收直播流")
+                EventBus.getDefault().post(RecordFileClosedEvent(this@RawRecordTask.room.roomConfig.roomId))
+            }
         }
-        started = false
-        logger.info("停止接收直播流")
-        startAndStopLock.unlock()
-        EventBus.getDefault().post(RecordFileClosedEvent(this.room.roomConfig.roomId))
     }
 
     private fun createRecordingJob(baseFileName: String) = launch(

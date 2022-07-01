@@ -2,6 +2,8 @@ package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
@@ -16,13 +18,12 @@ import org.greenrobot.eventbus.ThreadMode
 import java.io.Closeable
 import java.io.File
 import java.time.OffsetDateTime
-import java.util.concurrent.locks.ReentrantLock
 
 class RoomRecordingTaskController(
     private val room: Room,
 ) : Closeable {
     private val logger = LoggingFactory.getLogger(this.room.roomConfig.roomId, this)
-    private val startAndStopLock = ReentrantLock()
+    private val startAndStopLock = Mutex()
 
     @Volatile
     private var videoRecordingTask: BaseRecordTask? = null
@@ -51,46 +52,34 @@ class RoomRecordingTaskController(
 
     override fun close() {
         runBlocking {
-            startAndStopLock.lock()
-            if (closed) {
-                startAndStopLock.unlock()
-                return@runBlocking
-            }
+            startAndStopLock.withLock {
+                if (closed) return@withLock
 
-            requestStopAsync()
-            withContext(Dispatchers.IO) {
-                videoRecordingTask?.closeQuietly()
-                danmakuRecordingTask!!.closeQuietly()
+                requestStopAsync()
+                withContext(Dispatchers.IO) {
+                    videoRecordingTask?.closeQuietly()
+                    danmakuRecordingTask!!.closeQuietly()
+                }
+                videoRecordingTask = null
+                danmakuRecordingTask = null
             }
-            videoRecordingTask = null
-            danmakuRecordingTask = null
+            EventBus.getDefault().unregister(this@RoomRecordingTaskController)
         }
-        EventBus.getDefault().unregister(this@RoomRecordingTaskController)
-        startAndStopLock.unlock()
     }
 
     suspend fun requestStopAsync() {
-        startAndStopLock.lock()
-        if (!started) {
-            startAndStopLock.unlock()
-            return
-        }
-        try {
+        startAndStopLock.withLock {
+            if (!started)return@withLock
+
             videoRecordingTask?.stopRecording()
             danmakuRecordingTask!!.stopRecording()
             started = false
-        } finally {
-            startAndStopLock.unlock()
         }
     }
 
     suspend fun requestStartAsync() {
-        startAndStopLock.lock()
-        if (started) {
-            startAndStopLock.unlock()
-            return
-        }
-        try {
+        startAndStopLock.withLock{
+            if (started) return@withLock
             val startTime = OffsetDateTime.now()
             val baseDir = File(
                 removeIllegalChar(
@@ -102,8 +91,6 @@ class RoomRecordingTaskController(
                 File(baseDir, removeIllegalChar(generateFileName(this@RoomRecordingTaskController.room, startTime)))
             videoRecordingTask!!.startAsync(baseFile.canonicalPath)
             started = true
-        } finally {
-            startAndStopLock.unlock()
         }
     }
 

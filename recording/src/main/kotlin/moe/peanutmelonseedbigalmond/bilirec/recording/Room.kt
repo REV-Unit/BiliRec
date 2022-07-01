@@ -1,6 +1,8 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import moe.peanutmelonseedbigalmond.bilirec.RoomInfoRefreshEvent
 import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
@@ -12,7 +14,6 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import java.io.Closeable
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.coroutines.CoroutineContext
 
 class Room(
@@ -23,7 +24,7 @@ class Room(
     private lateinit var recordingTaskController: RoomRecordingTaskController
 
     // 在开始和停止的时候都要求先获取这个锁才能操作
-    private val startAndStopLock = ReentrantLock()
+    private val startAndStopLock = Mutex()
 
     // region 状态
     @Volatile
@@ -105,33 +106,26 @@ class Room(
 
     // region start and stop
     private suspend fun requestStartAsync() {
-        startAndStopLock.lock()
-        if (closed) {
-            startAndStopLock.unlock()
-            return
-        }
-        requireRestart = true
-        while (isActive) {
-            try {
-                recordingTaskController.requestStartAsync()
-                break
-            } catch (e: Exception) {
-                logger.error("启动录制任务失败，1秒后重试")
-                logger.debug(e.stackTraceToString())
-                delay(1000)
-            } finally {
-                startAndStopLock.unlock()
+        startAndStopLock.withLock {
+            if (closed) return
+            requireRestart = true
+            while (isActive) {
+                try {
+                    recordingTaskController.requestStartAsync()
+                    break
+                } catch (e: Exception) {
+                    logger.error("启动录制任务失败，1秒后重试")
+                    logger.debug(e.stackTraceToString())
+                    delay(1000)
+                }
             }
         }
     }
 
     private suspend fun requestStopAsync() {
-        try {
-            startAndStopLock.lock()
+        startAndStopLock.withLock {
             requireRestart = false
             recordingTaskController.requestStopAsync()
-        } finally {
-            startAndStopLock.unlock()
         }
     }
     // endregion
