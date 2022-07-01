@@ -135,6 +135,7 @@ class DanmakuRecordTask(
     }
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
+    @Suppress("UNUSED_PARAMETER")
     fun onOtherEventReceived(event: DanmakuEvents.OtherEvent) {
         // Do nothing
     }
