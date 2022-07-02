@@ -67,13 +67,13 @@ class LiveStreamRepairContext(
     }
 
     override fun close() {
+        if (closed) return
+        closed = true
+        runBlocking(coroutineContext) {
+            this@LiveStreamRepairContext.flvWriteJob?.cancelAndJoin()
+            this@LiveStreamRepairContext.flvWriteJob = null
+        }
         synchronized(writeLock) {
-            if (closed) return
-            closed = true
-            runBlocking(coroutineContext) {
-                this@LiveStreamRepairContext.flvWriteJob?.cancelAndJoin()
-                this@LiveStreamRepairContext.flvWriteJob = null
-            }
             this.flvTagReader?.close()
             this.flvTagReader = null
             this.flvWriter?.close()
@@ -104,6 +104,7 @@ class LiveStreamRepairContext(
     private fun writeTag(tag: Tag?) {
         if (tag == null) return
         synchronized(writeLock) {
+            if (closed) return
             when (tag.getTagType()) {
                 TagType.SCRIPT -> {
                     this.flvWriter?.writeFlvHeader()
