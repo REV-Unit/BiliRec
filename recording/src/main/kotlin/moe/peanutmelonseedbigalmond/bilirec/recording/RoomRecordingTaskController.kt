@@ -80,6 +80,7 @@ class RoomRecordingTaskController(
     suspend fun requestStartAsync() {
         startAndStopLock.withLock{
             if (started) return@withLock
+            if (!this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) return@withLock
             val startTime = OffsetDateTime.now()
             val baseDir = File(
                 removeIllegalChar(
