@@ -1,4 +1,4 @@
-package moe.peanutmelonseedbigalmond.bilirec
+package moe.peanutmelonseedbigalmond.bilirec.events
 
 data class RoomInfoRefreshEvent(
     val roomId: Long,

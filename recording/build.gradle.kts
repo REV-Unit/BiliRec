@@ -11,5 +11,5 @@ dependencies {
     implementation(project(":config"))
     implementation(project(":logging"))
     implementation(project(":flv"))
-    implementation(project(":events"))
+    implementation(project(":common"))
 }

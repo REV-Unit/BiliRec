@@ -5,7 +5,7 @@ include("recording")
 include("logging")
 include("config")
 include("flv")
-include("events")
+include("common")
 include("web")
 
 pluginManagement {

@@ -1,6 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.app
 
-import moe.peanutmelonseedbigalmond.bilirec.RoomInfoRefreshEvent
+import moe.peanutmelonseedbigalmond.bilirec.events.RoomInfoRefreshEvent
 import moe.peanutmelonseedbigalmond.bilirec.config.ConfigReader
 import moe.peanutmelonseedbigalmond.bilirec.config.ConfigRoot
 import moe.peanutmelonseedbigalmond.bilirec.config.ConfigWriter

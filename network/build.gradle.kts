@@ -16,5 +16,5 @@ dependencies {
     implementation("com.github.haroldadmin:NetworkResponseAdapter:4.2.2")
     implementation("com.squareup.retrofit2:converter-scalars:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation(project(":events"))
+    implementation(project(":common"))
 }
