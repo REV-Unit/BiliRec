@@ -2,6 +2,7 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.task
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import moe.peanutmelonseedbigalmond.bilirec.interfaces.AsyncCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
@@ -11,7 +12,7 @@ import java.io.InputStream
 import java.time.Duration
 import kotlin.coroutines.coroutineContext
 
-abstract class BaseRecordTask(protected val room: Room) : Closeable {
+abstract class BaseRecordTask(protected val room: Room) : AsyncCloseable {
     private val qnMap = mapOf(
         30000 to "杜比",
         20000 to "4K",
@@ -28,11 +29,11 @@ abstract class BaseRecordTask(protected val room: Room) : Closeable {
 
     abstract val closed: Boolean
     protected open val logger = LoggingFactory.getLogger(room.roomConfig.roomId, this)
-    abstract fun prepare()
-    abstract fun startAsync(baseFileName: String)
+    abstract suspend fun prepareAsync()
+    abstract suspend fun startAsync(baseFileName: String)
 
     // 结束录制，但是不结束任务
-    abstract fun stopRecording()
+    abstract suspend fun stopRecordingAsync()
 
     protected open suspend fun createLiveStreamRepairContextAsync(requireDelay: Boolean = false) {
         while (coroutineContext.isActive) {

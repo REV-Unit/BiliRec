@@ -11,11 +11,12 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 
 class DanmakuRecordTask(
     room: Room,
-    coroutineContext: CoroutineContext = Dispatchers.IO
-) : BaseRecordTask(room), CoroutineScope by CoroutineScope(coroutineContext) {
+    coroutineContext: CoroutineContext,
+) : BaseRecordTask(room),CoroutineScope by CoroutineScope(coroutineContext) {
     @Volatile
     private var danmakuWriter: DanmakuWriter? = null
     private var writeLock = Object()
@@ -25,57 +26,49 @@ class DanmakuRecordTask(
     private var recording = false
     override val closed: Boolean = recording
 
-    override fun prepare() {
-        launch {
-            EventBus.getDefault().register(this@DanmakuRecordTask)
-            danmakuClient = DanmakuTcpClient(this@DanmakuRecordTask.room.roomConfig.roomId)
-            connectToDanmakuServerAsync()
+    override suspend fun prepareAsync() {
+        EventBus.getDefault().register(this@DanmakuRecordTask)
+        danmakuClient = DanmakuTcpClient(this@DanmakuRecordTask.room.roomConfig.roomId)
+        withContext(coroutineContext) { connectToDanmakuServerAsync() }
+    }
+
+    override suspend fun startAsync(baseFileName: String) {
+        synchronized(writeLock) {
+            if (danmakuWriter != null) return
+            danmakuWriter = DanmakuWriter(
+                room = this@DanmakuRecordTask.room,
+                outputFileName = "$baseFileName.xml"
+            )
+            recording = true
         }
     }
 
-    override fun startAsync(baseFileName: String) {
-        launch {
-            synchronized(writeLock) {
-                if (danmakuWriter != null) return@launch
-                danmakuWriter = DanmakuWriter(
-                    room = this@DanmakuRecordTask.room,
-                    outputFileName = "$baseFileName.xml"
-                )
-                recording = true
-            }
+    override suspend fun stopRecordingAsync() {
+        synchronized(writeLock) {
+            if (!recording) return
+            if (danmakuWriter == null) return
+            recording = false
+            danmakuWriter!!.close()
+            danmakuWriter = null
         }
     }
 
-    override fun stopRecording() {
-        runBlocking {
-            synchronized(writeLock) {
-                if (!recording) return@runBlocking
-                if (danmakuWriter == null) return@runBlocking
-                recording = false
-                danmakuWriter!!.close()
-                danmakuWriter = null
-            }
-        }
-    }
-
-    override fun close() {
-        stopRecording()
+    override suspend fun closeAsync() {
+        stopRecordingAsync()
         EventBus.getDefault().unregister(this)
-        cancel()
     }
 
-    private suspend fun connectToDanmakuServerAsync(requireDelay: Boolean = false): Unit =
-        withContext(Dispatchers.IO) {
-            if (closed) return@withContext
-            return@withContext try {
-                if (requireDelay) delay(5000)
-                danmakuClient.connectAsync()
-            } catch (e: Exception) {
-                logger.error("连接弹幕服务器出错：${e.localizedMessage}")
-                logger.debug(e.stackTraceToString())
-                connectToDanmakuServerAsync(true)
-            }
+    private suspend fun connectToDanmakuServerAsync(requireDelay: Boolean = false): Unit {
+        if (closed) return
+        return try {
+            if (requireDelay) delay(5000)
+            danmakuClient.connectAsync()
+        } catch (e: Exception) {
+            logger.error("连接弹幕服务器出错：${e.localizedMessage}")
+            logger.debug(e.stackTraceToString())
+            withContext(coroutineContext) { connectToDanmakuServerAsync(true) }
         }
+    }
 
     // region 处理弹幕消息
     @Subscribe(threadMode = ThreadMode.ASYNC)
@@ -151,11 +144,9 @@ class DanmakuRecordTask(
 
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onWssClientClosed(event: DanmakuClientEvent.ClientClosed) {
-        launch {
-            if (event.roomId == this@DanmakuRecordTask.room.roomConfig.roomId) {
-                logger.info("弹幕服务器已断开，正在重连")
-                connectToDanmakuServerAsync(true)
-            }
+        if (event.roomId == this@DanmakuRecordTask.room.roomConfig.roomId) {
+            logger.info("弹幕服务器已断开，正在重连")
+            launch { connectToDanmakuServerAsync(true) }
         }
     }
 

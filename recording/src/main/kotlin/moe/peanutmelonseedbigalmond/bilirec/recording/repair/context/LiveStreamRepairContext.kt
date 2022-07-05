@@ -9,6 +9,7 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.ScriptData
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.VideoData
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.*
 import moe.peanutmelonseedbigalmond.bilirec.flv.writer.FlvTagWriter
+import moe.peanutmelonseedbigalmond.bilirec.interfaces.AsyncCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
@@ -29,7 +30,7 @@ class LiveStreamRepairContext(
     private val room: Room,
     private val outputFileNamePrefix: String,
     coroutineContext: CoroutineContext = Dispatchers.IO
-) : Closeable, CoroutineScope by CoroutineScope(coroutineContext) {
+) : AsyncCloseable, CoroutineScope by CoroutineScope(coroutineContext) {
     private val logger = LoggingFactory.getLogger(room.roomConfig.roomId, this)
     private val writeLock = Object()
 
@@ -58,7 +59,7 @@ class LiveStreamRepairContext(
 
     fun startAsync() {
         flvWriter = FlvTagWriter("$outputFileNamePrefix.flv")
-        this.flvTagReader = FlvTagReader(inputStream,this.logger)
+        this.flvTagReader = FlvTagReader(inputStream, this.logger)
         processChain = FlvTagProcessChain<Tag>()
             .addProcessNode(TagTimestampProcessNode(this.logger))
             .addProcessNode(TagDataProcessNode(this.logger))
@@ -66,19 +67,16 @@ class LiveStreamRepairContext(
         this.flvWriteJob = createFlvWriteJob()
     }
 
-    override fun close() {
+    override suspend fun closeAsync() {
         if (closed) return
         closed = true
-        runBlocking(coroutineContext) {
-            this@LiveStreamRepairContext.flvWriteJob?.cancelAndJoin()
-            this@LiveStreamRepairContext.flvWriteJob = null
-        }
+        this.flvWriteJob?.cancelAndJoin()
+        this.flvWriteJob = null
         synchronized(writeLock) {
             this.flvTagReader?.close()
             this.flvTagReader = null
             this.flvWriter?.close()
             this.flvWriter = null
-            cancel()
         }
     }
 

@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import moe.peanutmelonseedbigalmond.bilirec.events.RoomInfoRefreshEvent
 import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
+import moe.peanutmelonseedbigalmond.bilirec.interfaces.AsyncCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.event.DanmakuEvents
@@ -19,7 +20,7 @@ import kotlin.coroutines.CoroutineContext
 class Room(
     val roomConfig: RoomConfig,
     coroutineContext: CoroutineContext = Dispatchers.IO
-) : Closeable, CoroutineScope by CoroutineScope(coroutineContext) {
+) : AsyncCloseable, CoroutineScope by CoroutineScope(coroutineContext) {
     private val logger = LoggingFactory.getLogger(this.roomConfig.roomId, this)
     private lateinit var recordingTaskController: RoomRecordingTaskController
 
@@ -73,7 +74,7 @@ class Room(
         EventBus.getDefault().register(this)
         return launch {
             updateRoomInfoJob = createUpdateRoomInfoJob()
-            recordingTaskController = RoomRecordingTaskController(this@Room)
+            recordingTaskController = RoomRecordingTaskController(this@Room, coroutineContext)
             recordingTaskController.prepareAsync()
             while (isActive) {
                 try {
@@ -93,14 +94,13 @@ class Room(
         }
     }
 
-    override fun close() {
+    override suspend fun closeAsync() {
         if (closed) return
         closed = true
-        runBlocking(coroutineContext) {
+        withContext(Dispatchers.IO) {
             requestStopAsync()
             updateRoomInfoJob.cancelAndJoin()
         }
-        cancel()
         EventBus.getDefault().unregister(this)
     }
 

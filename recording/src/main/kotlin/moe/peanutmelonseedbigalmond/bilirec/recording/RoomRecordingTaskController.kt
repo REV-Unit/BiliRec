@@ -1,10 +1,10 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
+import moe.peanutmelonseedbigalmond.bilirec.closeQuietlyAsync
+import moe.peanutmelonseedbigalmond.bilirec.interfaces.AsyncCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
@@ -15,13 +15,15 @@ import okhttp3.internal.closeQuietly
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import java.io.Closeable
 import java.io.File
 import java.time.OffsetDateTime
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 
 class RoomRecordingTaskController(
     private val room: Room,
-) : Closeable {
+    coroutineContext: CoroutineContext
+) : AsyncCloseable, CoroutineScope by CoroutineScope(coroutineContext) {
     private val logger = LoggingFactory.getLogger(this.room.roomConfig.roomId, this)
     private val startAndStopLock = Mutex()
 
@@ -39,46 +41,41 @@ class RoomRecordingTaskController(
     suspend fun prepareAsync() {
         EventBus.getDefault().register(this)
         if (danmakuRecordingTask != null) {
-            danmakuRecordingTask!!.closeQuietly()
+            danmakuRecordingTask!!.closeQuietlyAsync()
             danmakuRecordingTask = null
         }
-        danmakuRecordingTask = DanmakuRecordTask(this@RoomRecordingTaskController.room)
-        danmakuRecordingTask!!.prepare()
+        danmakuRecordingTask = DanmakuRecordTask(this@RoomRecordingTaskController.room, coroutineContext)
+        danmakuRecordingTask!!.prepareAsync()
         if (this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) {
             videoRecordingTask = RecordTaskFactory.getRecordTask(this@RoomRecordingTaskController.room)
-            videoRecordingTask!!.prepare()
+            videoRecordingTask!!.prepareAsync()
         }
     }
 
-    override fun close() {
-        runBlocking {
-            startAndStopLock.withLock {
-                if (closed) return@withLock
+    override suspend fun closeAsync() {
+        startAndStopLock.withLock {
+            if (closed) return@withLock
 
-                requestStopAsync()
-                withContext(Dispatchers.IO) {
-                    videoRecordingTask?.closeQuietly()
-                    danmakuRecordingTask!!.closeQuietly()
-                }
-                videoRecordingTask = null
-                danmakuRecordingTask = null
-            }
-            EventBus.getDefault().unregister(this@RoomRecordingTaskController)
+            requestStopAsync()
+            videoRecordingTask?.closeQuietlyAsync()
+            danmakuRecordingTask!!.closeQuietlyAsync()
+            videoRecordingTask = null
+            danmakuRecordingTask = null
         }
+        EventBus.getDefault().unregister(this@RoomRecordingTaskController)
     }
 
     suspend fun requestStopAsync() {
         startAndStopLock.withLock {
-            if (!started)return@withLock
-
-            videoRecordingTask?.stopRecording()
-            danmakuRecordingTask!!.stopRecording()
+            if (!started) return@withLock
+            videoRecordingTask?.stopRecordingAsync()
+            danmakuRecordingTask!!.stopRecordingAsync()
             started = false
         }
     }
 
     suspend fun requestStartAsync() {
-        startAndStopLock.withLock{
+        startAndStopLock.withLock {
             if (started) return@withLock
             if (!this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) return@withLock
             val startTime = OffsetDateTime.now()
@@ -100,7 +97,7 @@ class RoomRecordingTaskController(
     fun onRecordFileOpened(e: RecordFileOpenedEvent) {
         if (e.roomId == this.room.roomConfig.roomId) {
             logger.info("新建录制文件：${e.baseFileName}")
-            danmakuRecordingTask!!.startAsync(e.baseFileName)
+            launch { danmakuRecordingTask!!.startAsync(e.baseFileName) }
         }
     }
 
@@ -108,7 +105,7 @@ class RoomRecordingTaskController(
     fun onRecordFileClosed(e: RecordFileClosedEvent) {
         if (e.roomId == this.room.roomConfig.roomId) {
             logger.info("录制结束")
-            danmakuRecordingTask!!.stopRecording()
+            launch { danmakuRecordingTask!!.stopRecordingAsync() }
         }
     }
 
