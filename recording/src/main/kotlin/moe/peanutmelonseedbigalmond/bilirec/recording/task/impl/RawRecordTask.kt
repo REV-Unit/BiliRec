@@ -91,8 +91,6 @@ class RawRecordTask(
                     if (len == -1) break
 
                     withContext(Dispatchers.IO) { fileOutputStream.write(buffer, 0, len) }
-                } catch (e: CancellationException) {
-                    throw e
                 } catch (e: Exception) {
                     EventBus.getDefault().post(RecordingThreadErrorEvent(room, e))
                 }

@@ -170,8 +170,6 @@ class DanmakuTcpClient(
                     if (length < 4) continue
                     dispatchMessage(lengthByte + body)
                 }
-            } catch (e: CancellationException) {
-                throw e
             } catch (e: Exception) {
                 EventBus.getDefault()
                     .post(

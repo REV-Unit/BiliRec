@@ -82,8 +82,6 @@ class Room(
                     refreshRoomInfo()
                     logger.info("获取直播间信息成功：username=$userName, title=$title, parentAreaName=$parentAreaName, childAreaName=$childAreaName, living=$living")
                     break
-                } catch (e: CancellationException) {
-                    throw e
                 } catch (e: Exception) {
                     logger.error("刷新房间信息失败，重试：$e")
                     logger.debug(e.stackTraceToString())
@@ -205,8 +203,6 @@ class Room(
             while (isActive) {
                 try {
                     getRoomInfo()
-                } catch (e: CancellationException) {
-                    throw e
                 } catch (e: Exception) {
                     logger.error("获取直播间信息时出现异常：${e.localizedMessage}")
                     logger.debug(e.stackTraceToString())
