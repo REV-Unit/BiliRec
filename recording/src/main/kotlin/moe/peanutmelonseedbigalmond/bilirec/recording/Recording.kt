@@ -1,9 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.withContext
-import moe.peanutmelonseedbigalmond.bilirec.closeQuietlyAsync
 import java.util.concurrent.ConcurrentHashMap
 
 class Recording private constructor(private val innerMap: ConcurrentHashMap<Long, Room>) :

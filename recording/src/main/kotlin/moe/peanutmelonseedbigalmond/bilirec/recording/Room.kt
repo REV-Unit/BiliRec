@@ -3,8 +3,8 @@ package moe.peanutmelonseedbigalmond.bilirec.recording
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import moe.peanutmelonseedbigalmond.bilirec.events.RoomInfoRefreshEvent
 import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
+import moe.peanutmelonseedbigalmond.bilirec.events.RoomInfoRefreshEvent
 import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
@@ -15,7 +15,6 @@ import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 
 class Room(
     val roomConfig: RoomConfig,
@@ -103,7 +102,7 @@ class Room(
     }
 
     // region start and stop
-    private suspend fun requestStart() = withContext(scope.coroutineContext){
+    private suspend fun requestStart() = withContext(scope.coroutineContext) {
         startAndStopLock.withLock {
             if (closed) return@withLock
             requireRestart = true
@@ -120,7 +119,7 @@ class Room(
         }
     }
 
-    private suspend fun requestStop() = withContext(scope.coroutineContext){
+    private suspend fun requestStop() = withContext(scope.coroutineContext) {
         startAndStopLock.withLock {
             requireRestart = false
             recordingTaskController.requestStop()

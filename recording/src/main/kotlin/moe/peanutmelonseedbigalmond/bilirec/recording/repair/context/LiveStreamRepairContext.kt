@@ -98,7 +98,7 @@ class LiveStreamRepairContext(
         }
     }
 
-    private fun writeTag(tag: Tag?){
+    private fun writeTag(tag: Tag?) {
         if (tag == null) return
         synchronized(writeLock) {
             if (closed) return

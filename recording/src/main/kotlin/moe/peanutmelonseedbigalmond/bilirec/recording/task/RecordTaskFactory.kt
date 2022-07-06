@@ -7,10 +7,10 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.StrandRecordTask
 import kotlin.coroutines.CoroutineContext
 
 object RecordTaskFactory {
-    fun getRecordTask(room: Room,coroutineContext: CoroutineContext): BaseRecordTask =
+    fun getRecordTask(room: Room, coroutineContext: CoroutineContext): BaseRecordTask =
         when (room.roomConfig.recordMode) {
-            RoomConfig.RecordMode.RAW -> RawRecordTask(room,coroutineContext)
-            RoomConfig.RecordMode.STRAND -> StrandRecordTask(room,coroutineContext)
+            RoomConfig.RecordMode.RAW -> RawRecordTask(room, coroutineContext)
+            RoomConfig.RecordMode.STRAND -> StrandRecordTask(room, coroutineContext)
             else -> throw IllegalArgumentException("Unsupported recordMode for room ${room.roomConfig.roomId} with mode ${room.roomConfig.recordMode}")
         }
 }

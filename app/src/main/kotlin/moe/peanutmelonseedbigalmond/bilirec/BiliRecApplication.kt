@@ -9,6 +9,6 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 class BiliRecApplication
 
 fun main(args: Array<String>) = runBlocking {
-    SpringApplication.run(BiliRecApplication::class.java,*args)
+    SpringApplication.run(BiliRecApplication::class.java, *args)
     CommandProcessor.processAsync(args)
 }

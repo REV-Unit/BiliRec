@@ -12,13 +12,11 @@ import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.enum.DanmakuOperatio
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.event.DanmakuClientEvent
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.event.DanmakuEvents
 import org.greenrobot.eventbus.EventBus
-import java.io.Closeable
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.net.Socket
 import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
 import kotlin.properties.Delegates
 
 // 采用TCP协议连接到服务器
@@ -37,7 +35,7 @@ class DanmakuTcpClient(
     private lateinit var danmakuAddress: String
     private var danmakuServerPort by Delegates.notNull<Int>()
     private lateinit var danmakuServerToken: String
-    private val scope= CoroutineScope(coroutineContext+ SupervisorJob())
+    private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     companion object {
         // 心跳包的间隔时间，默认为60秒
@@ -128,7 +126,7 @@ class DanmakuTcpClient(
     private suspend fun send(messageBody: ByteArray) {
         withContext(scope.coroutineContext) {
             if (connected) {
-                withContext(Dispatchers.IO){
+                withContext(Dispatchers.IO) {
                     outputStream?.write(messageBody)
                     outputStream?.flush()
                 }
@@ -144,7 +142,7 @@ class DanmakuTcpClient(
         }
     }
 
-    private fun createSendHeartbeatJob(coroutineContext: CoroutineContext = Dispatchers.IO): Job {
+    private fun createSendHeartbeatJob(): Job {
         return scope.launch(start = CoroutineStart.LAZY) {
             while (isActive) {
                 sendHeartBeat()

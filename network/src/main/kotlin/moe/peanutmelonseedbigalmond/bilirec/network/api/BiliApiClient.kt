@@ -70,8 +70,8 @@ class BiliApiClient(private val client: OkHttpClient, biliLiveHost: String) {
 
     suspend fun getResponseAsync(
         url: String,
-        readTimeout:Duration = DEFAULT_TIMEOUT_SPAN,
-        writeTimeOut:Duration = DEFAULT_TIMEOUT_SPAN,
+        readTimeout: Duration = DEFAULT_TIMEOUT_SPAN,
+        writeTimeOut: Duration = DEFAULT_TIMEOUT_SPAN,
         connectTimeout: Duration = DEFAULT_TIMEOUT_SPAN
     ): Response {
         val c = client.newBuilder()
@@ -83,7 +83,7 @@ class BiliApiClient(private val client: OkHttpClient, biliLiveHost: String) {
         val req = Request.Builder()
             .url(url)
             .get().build()
-        return withContext(Dispatchers.IO){ c.newCall(req).execute() }
+        return withContext(Dispatchers.IO) { c.newCall(req).execute() }
     }
 
     private fun <T : Any> makeSureResponseSuccess(response: NetworkResponse<T, Any>): T {

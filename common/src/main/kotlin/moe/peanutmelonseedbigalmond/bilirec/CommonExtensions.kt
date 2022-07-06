@@ -4,8 +4,6 @@ import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.EmptyCoroutineContext
 
 @OptIn(ExperimentalContracts::class)
 suspend inline fun <T : SuspendableCloseable?, R> T.use(

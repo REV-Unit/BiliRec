@@ -1,8 +1,11 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.task.impl
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent

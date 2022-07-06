@@ -10,9 +10,9 @@ plugins {
 
 group = "moe.peanutmelonseedbigalmond"
 version = "1.0-SNAPSHOT"
-java.sourceCompatibility=JavaVersion.VERSION_17
+java.sourceCompatibility = JavaVersion.VERSION_17
 
-allprojects{
+allprojects {
     repositories {
 //        mavenCentral()
         maven("https://maven.aliyun.com/repository/central")
@@ -28,8 +28,8 @@ configurations {
     }
 }
 
-tasks.withType<org.springframework.boot.gradle.tasks.bundling.BootJar>{
-    setProperty("mainClass","moe.peanutmelonseedbigalmond.bilirec.BiliRecApplicationKt")
+tasks.withType<org.springframework.boot.gradle.tasks.bundling.BootJar> {
+    setProperty("mainClass", "moe.peanutmelonseedbigalmond.bilirec.BiliRecApplicationKt")
 }
 
 //tasks.withType<Jar> {
@@ -46,7 +46,7 @@ tasks.withType<org.springframework.boot.gradle.tasks.bundling.BootJar>{
 //    archiveBaseName.set("BiliRec")
 //}
 
-subprojects{
+subprojects {
     apply {
         plugin("org.jetbrains.kotlin.jvm")
 //        plugin("com.github.johnrengelman.shadow")
@@ -60,8 +60,8 @@ subprojects{
         implementation(kotlin("stdlib-jdk8"))
         implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.2")
         implementation("commons-cli:commons-cli:1.5.0")
-        implementation("org.springframework.boot:spring-boot-starter"){
-            exclude(group="org.springframework.boot",module="spring-boot-starter-logging")
+        implementation("org.springframework.boot:spring-boot-starter") {
+            exclude(group = "org.springframework.boot", module = "spring-boot-starter-logging")
         }
         developmentOnly("org.springframework.boot:spring-boot-devtools")
         testImplementation("org.springframework.boot:spring-boot-starter-test")
@@ -72,7 +72,7 @@ subprojects{
 
     tasks.withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "17"
-        kotlinOptions.freeCompilerArgs=listOf("-Xjsr305=strict")
+        kotlinOptions.freeCompilerArgs = listOf("-Xjsr305=strict")
     }
 
 //    tasks.getByName<Test>("test") {
