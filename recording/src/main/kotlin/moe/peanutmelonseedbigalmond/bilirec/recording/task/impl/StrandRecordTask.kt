@@ -13,8 +13,10 @@ import kotlin.coroutines.CoroutineContext
 
 class StrandRecordTask(
     room: Room,
+    coroutineContext: CoroutineContext
 ) : BaseRecordTask(room) {
     private val startAndStopLock = Mutex()
+    private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     @Volatile
     private var started = false
@@ -26,38 +28,40 @@ class StrandRecordTask(
     @Volatile
     private var repairContext: LiveStreamRepairContext? = null
 
-    override suspend fun prepareAsync() {
+    override suspend fun prepare() {
         // 准备时不需要做任何事
     }
 
-    override suspend fun startAsync(baseFileName: String) {
+    override suspend fun start(baseFileName: String) = withContext(scope.coroutineContext) {
         startAndStopLock.withLock {
             if (started) return@withLock
-            createLiveStreamRepairContextAsync()
-            repairContext = LiveStreamRepairContext(liveStream, room, baseFileName)
-            repairContext!!.startAsync()
+            createLiveStreamRepairContext()
+            repairContext =
+                LiveStreamRepairContext(liveStream, room, baseFileName, this@StrandRecordTask.scope.coroutineContext)
+            repairContext!!.start()
             started = true
             EventBus.getDefault()
                 .post(RecordFileOpenedEvent(this@StrandRecordTask.room.roomConfig.roomId, baseFileName))
         }
     }
 
-    override suspend fun stopRecordingAsync() {
+    override suspend fun stopRecording() = withContext(scope.coroutineContext) {
         startAndStopLock.withLock {
             if (!started) return@withLock
             started = false
             logger.info("停止接收直播流")
-            repairContext?.closeAsync()
+            repairContext?.close()
             repairContext = null
             EventBus.getDefault().post(RecordFileClosedEvent(this@StrandRecordTask.room.roomConfig.roomId))
         }
     }
 
-    override suspend fun closeAsync() {
+    override suspend fun close() {
         startAndStopLock.withLock {
             if (closed) return@withLock
             mClosed = true
-            stopRecordingAsync()
+            stopRecording()
+            scope.cancel()
         }
     }
 }

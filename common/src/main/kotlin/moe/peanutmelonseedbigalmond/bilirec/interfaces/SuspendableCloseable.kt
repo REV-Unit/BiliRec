@@ -1,5 +1,5 @@
 package moe.peanutmelonseedbigalmond.bilirec.interfaces
 
-interface AsyncCloseable {
-    suspend fun closeAsync()
+interface SuspendableCloseable {
+    suspend fun close()
 }

@@ -18,17 +18,14 @@ class Recording private constructor(private val innerMap: ConcurrentHashMap<Long
         } else {
             if (!innerMap.contains(room.roomConfig.roomId)) {
                 innerMap[room.roomConfig.roomId] = room
-                room.prepareAsync()
+                room.prepare()
             }
         }
     }
 
     suspend fun unregisterTaskAsync(roomId: Long) {
         withContext(Dispatchers.IO) {
-            innerMap.remove(roomId)?.let {
-                it.closeAsync()
-                it.cancel()
-            }
+            innerMap.remove(roomId)?.close()
         }
     }
 

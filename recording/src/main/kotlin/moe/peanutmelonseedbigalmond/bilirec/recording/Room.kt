@@ -5,7 +5,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import moe.peanutmelonseedbigalmond.bilirec.events.RoomInfoRefreshEvent
 import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
-import moe.peanutmelonseedbigalmond.bilirec.interfaces.AsyncCloseable
+import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.event.DanmakuEvents
@@ -14,15 +14,16 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExit
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
-import java.io.Closeable
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 
 class Room(
     val roomConfig: RoomConfig,
-    coroutineContext: CoroutineContext = Dispatchers.IO
-) : AsyncCloseable, CoroutineScope by CoroutineScope(coroutineContext) {
+    coroutineContext: CoroutineContext
+) : SuspendableCloseable {
     private val logger = LoggingFactory.getLogger(this.roomConfig.roomId, this)
     private lateinit var recordingTaskController: RoomRecordingTaskController
+    private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     // 在开始和停止的时候都要求先获取这个锁才能操作
     private val startAndStopLock = Mutex()
@@ -32,9 +33,9 @@ class Room(
     var living = false
         private set(value) {
             if (value) {
-                runBlocking(coroutineContext) { requestStartAsync() }
+                runBlocking(scope.coroutineContext) { requestStart() }
             } else {
-                runBlocking(coroutineContext) { requestStopAsync() }
+                runBlocking(scope.coroutineContext) { requestStop() }
             }
             field = value
         }
@@ -70,19 +71,19 @@ class Room(
 
     private lateinit var updateRoomInfoJob: Job
 
-    fun prepareAsync(): Job {
+    fun prepare(): Job {
         EventBus.getDefault().register(this)
-        return launch {
+        return scope.launch {
             updateRoomInfoJob = createUpdateRoomInfoJob()
             recordingTaskController = RoomRecordingTaskController(this@Room, coroutineContext)
-            recordingTaskController.prepareAsync()
+            recordingTaskController.prepare()
             while (isActive) {
                 try {
-                    refreshRoomInfoAsync()
+                    refreshRoomInfo()
                     logger.info("获取直播间信息成功：username=$userName, title=$title, parentAreaName=$parentAreaName, childAreaName=$childAreaName, living=$living")
                     break
-                } catch (_: CancellationException) {
-
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.error("刷新房间信息失败，重试：$e")
                     logger.debug(e.stackTraceToString())
@@ -94,24 +95,23 @@ class Room(
         }
     }
 
-    override suspend fun closeAsync() {
+    override suspend fun close() {
         if (closed) return
+        requestStop()
+        updateRoomInfoJob.cancelAndJoin()
+        this@Room.scope.cancel()
         closed = true
-        withContext(Dispatchers.IO) {
-            requestStopAsync()
-            updateRoomInfoJob.cancelAndJoin()
-        }
-        EventBus.getDefault().unregister(this)
+        EventBus.getDefault().unregister(this@Room)
     }
 
     // region start and stop
-    private suspend fun requestStartAsync() {
+    private suspend fun requestStart() = withContext(scope.coroutineContext){
         startAndStopLock.withLock {
-            if (closed) return
+            if (closed) return@withLock
             requireRestart = true
-            while (isActive) {
+            while (coroutineContext.isActive) {
                 try {
-                    recordingTaskController.requestStartAsync()
+                    recordingTaskController.requestStart()
                     break
                 } catch (e: Exception) {
                     logger.error("启动录制任务失败，1秒后重试")
@@ -122,34 +122,34 @@ class Room(
         }
     }
 
-    private suspend fun requestStopAsync() {
+    private suspend fun requestStop() = withContext(scope.coroutineContext){
         startAndStopLock.withLock {
             requireRestart = false
-            recordingTaskController.requestStopAsync()
+            recordingTaskController.requestStop()
         }
     }
     // endregion
 
     // region 获取信息
-    private suspend fun refreshRoomInfoAsync() {
-        getAnchorInfoAsync()
-        getRoomInfoAsync()
+    private suspend fun refreshRoomInfo() {
+        getAnchorInfo()
+        getRoomInfo()
     }
 
-    private suspend fun getAnchorInfoAsync() {
-        val info = BiliApiClient.DEFAULT_CLIENT.getRoomAnchorInfo(this.roomConfig.roomId)
-        this.userName = info.info.username
+    private suspend fun getAnchorInfo() {
+        val info = BiliApiClient.DEFAULT_CLIENT.getRoomAnchorInfo(this@Room.roomConfig.roomId)
+        this@Room.userName = info.info.username
     }
 
-    private suspend fun getRoomInfoAsync() {
-        val roomInfo = BiliApiClient.DEFAULT_CLIENT.getRoomInfo(this.roomConfig.roomId)
-        this.roomConfig.roomId = roomInfo.roomId
-        this.shortId = roomInfo.shortRoomId
-        this.parentAreaName = roomInfo.parentAreaName
-        this.childAreaName = roomInfo.areaName
-        this.title = roomInfo.title
-        this.roomConfig.title = roomInfo.title
-        this.living = roomInfo.liveStatus == 1
+    private suspend fun getRoomInfo() {
+        val roomInfo = BiliApiClient.DEFAULT_CLIENT.getRoomInfo(this@Room.roomConfig.roomId)
+        this@Room.roomConfig.roomId = roomInfo.roomId
+        this@Room.shortId = roomInfo.shortRoomId
+        this@Room.parentAreaName = roomInfo.parentAreaName
+        this@Room.childAreaName = roomInfo.areaName
+        this@Room.title = roomInfo.title
+        this@Room.roomConfig.title = roomInfo.title
+        this@Room.living = roomInfo.liveStatus == 1
 
         EventBus.getDefault().post(
             RoomInfoRefreshEvent(
@@ -178,18 +178,20 @@ class Room(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onRecordingThreadExited(event: RecordingThreadExitedEvent) {
         if (event.room.roomConfig.roomId == this.roomConfig.roomId) {
-            runBlocking { this@Room.recordingTaskController.requestStopAsync() }
-            if (!requireRestart) return
-            // 重试
-            launch {
-                while (isActive) {
-                    try {
-                        getRoomInfoAsync()
-                        break
-                    } catch (e: Exception) {
-                        logger.error("重试启动直播流时出现异常：${e.localizedMessage}")
-                        logger.debug(e.stackTraceToString())
-                        delay(5000)
+            runBlocking(scope.coroutineContext) {
+                this@Room.recordingTaskController.requestStop()
+                if (!requireRestart) return@runBlocking
+                // 重试
+                launch {
+                    while (isActive) {
+                        try {
+                            getRoomInfo()
+                            break
+                        } catch (e: Exception) {
+                            logger.error("重试启动直播流时出现异常：${e.localizedMessage}")
+                            logger.debug(e.stackTraceToString())
+                            delay(5000)
+                        }
                     }
                 }
             }
@@ -199,12 +201,12 @@ class Room(
 
     // region 定时刷新直播间信息
     private fun createUpdateRoomInfoJob(): Job {
-        return launch(context = Dispatchers.IO, start = CoroutineStart.LAZY) {
+        return scope.launch(start = CoroutineStart.LAZY) {
             while (isActive) {
                 try {
-                    refreshRoomInfoAsync()
-                } catch (_: CancellationException) {
-
+                    getRoomInfo()
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.error("获取直播间信息时出现异常：${e.localizedMessage}")
                     logger.debug(e.stackTraceToString())
@@ -223,9 +225,9 @@ class Room(
             logger.info("直播开始")
             logger.debug(event.danmakuModel.toString())
             if (event.danmakuModel.liveTime == 0L) {
-                launch {
+                scope.launch {
                     try {
-                        getRoomInfoAsync()
+                        getRoomInfo()
                     } catch (e: Exception) {
                         logger.debug("刷新直播间信息时出现异常：${e.stackTraceToString()}")
                     }

@@ -1,7 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec
 
-import moe.peanutmelonseedbigalmond.bilirec.interfaces.AsyncCloseable
-import java.io.Closeable
+import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -9,8 +8,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
 
 @OptIn(ExperimentalContracts::class)
-suspend inline fun <T : AsyncCloseable?, R> T.use(
-    context: CoroutineContext = EmptyCoroutineContext,
+suspend inline fun <T : SuspendableCloseable?, R> T.use(
     action: (T) -> R
 ): R {
     contract {
@@ -25,15 +23,15 @@ suspend inline fun <T : AsyncCloseable?, R> T.use(
     } finally {
         when {
             this == null -> {}
-            exception == null -> closeAsync()
+            exception == null -> close()
             else -> this.closeQuietlyAsync()
         }
     }
 }
 
-suspend fun AsyncCloseable?.closeQuietlyAsync() {
+suspend fun SuspendableCloseable?.closeQuietlyAsync() {
     try {
-        this?.closeAsync()
+        this?.close()
     } catch (_: Throwable) {
     }
 }

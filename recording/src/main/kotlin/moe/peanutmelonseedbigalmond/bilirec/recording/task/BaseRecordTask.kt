@@ -2,17 +2,16 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.task
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import moe.peanutmelonseedbigalmond.bilirec.interfaces.AsyncCloseable
+import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.extension.getCodecItemInStreamUrlAsync
-import java.io.Closeable
 import java.io.InputStream
 import java.time.Duration
 import kotlin.coroutines.coroutineContext
 
-abstract class BaseRecordTask(protected val room: Room) : AsyncCloseable {
+abstract class BaseRecordTask(protected val room: Room) : SuspendableCloseable {
     private val qnMap = mapOf(
         30000 to "杜比",
         20000 to "4K",
@@ -29,18 +28,18 @@ abstract class BaseRecordTask(protected val room: Room) : AsyncCloseable {
 
     abstract val closed: Boolean
     protected open val logger = LoggingFactory.getLogger(room.roomConfig.roomId, this)
-    abstract suspend fun prepareAsync()
-    abstract suspend fun startAsync(baseFileName: String)
+    abstract suspend fun prepare()
+    abstract suspend fun start(baseFileName: String)
 
     // 结束录制，但是不结束任务
-    abstract suspend fun stopRecordingAsync()
+    abstract suspend fun stopRecording()
 
-    protected open suspend fun createLiveStreamRepairContextAsync(requireDelay: Boolean = false) {
+    protected open suspend fun createLiveStreamRepairContext(requireDelay: Boolean = false) {
         while (coroutineContext.isActive) {
             try {
                 if (requireDelay) delay(1000)
-                val (fullUrl, _) = getLiveStreamAddressAsync()
-                liveStream = getLiveStreamAsync(fullUrl, Duration.ofSeconds(10))
+                val (fullUrl, _) = getLiveStreamAddress()
+                liveStream = getLiveStream(fullUrl, Duration.ofSeconds(10))
                 break
             } catch (e: Exception) {
                 logger.error("获取直播流出错：${e.localizedMessage}")
@@ -51,7 +50,7 @@ abstract class BaseRecordTask(protected val room: Room) : AsyncCloseable {
     }
 
     // region 获取直播流
-    private suspend fun getLiveStreamAddressAsync(qn: Int = 10000): Pair<String, Int> {
+    private suspend fun getLiveStreamAddress(qn: Int = 10000): Pair<String, Int> {
         val selectedQn: Int
         val codecItemResp = BiliApiClient.DEFAULT_CLIENT.getCodecItemInStreamUrlAsync(room.roomConfig.roomId, qn)
         requireNotNull(codecItemResp) { "no supported stream url, qn: $qn" }
@@ -77,7 +76,7 @@ abstract class BaseRecordTask(protected val room: Room) : AsyncCloseable {
         return Pair(fullUrl, codecItemResp.currentQn)
     }
 
-    private suspend fun getLiveStreamAsync(fullUrl: String, readTimeout: Duration): InputStream {
+    private suspend fun getLiveStream(fullUrl: String, readTimeout: Duration): InputStream {
         val resp = BiliApiClient.DEFAULT_CLIENT.getResponseAsync(fullUrl, readTimeout = readTimeout)
         if (resp.code == 200) {
             requireNotNull(resp.body)

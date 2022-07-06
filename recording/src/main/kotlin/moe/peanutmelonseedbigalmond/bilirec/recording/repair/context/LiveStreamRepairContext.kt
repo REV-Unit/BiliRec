@@ -9,7 +9,7 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.ScriptData
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.VideoData
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.*
 import moe.peanutmelonseedbigalmond.bilirec.flv.writer.FlvTagWriter
-import moe.peanutmelonseedbigalmond.bilirec.interfaces.AsyncCloseable
+import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
@@ -19,7 +19,6 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.Tag
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagTimestampProcessNode
 import org.greenrobot.eventbus.EventBus
 import java.io.ByteArrayOutputStream
-import java.io.Closeable
 import java.io.InputStream
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
@@ -29,10 +28,11 @@ class LiveStreamRepairContext(
     private val inputStream: InputStream,
     private val room: Room,
     private val outputFileNamePrefix: String,
-    coroutineContext: CoroutineContext = Dispatchers.IO
-) : AsyncCloseable, CoroutineScope by CoroutineScope(coroutineContext) {
+    coroutineContext: CoroutineContext
+) : SuspendableCloseable, CoroutineScope by CoroutineScope(coroutineContext) {
     private val logger = LoggingFactory.getLogger(room.roomConfig.roomId, this)
     private val writeLock = Object()
+    private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     @Volatile
     private var flvTagReader: FlvTagReader? = null
@@ -57,17 +57,17 @@ class LiveStreamRepairContext(
     @Volatile
     private var closed = false
 
-    fun startAsync() {
+    suspend fun start() = withContext(scope.coroutineContext) {
         flvWriter = FlvTagWriter("$outputFileNamePrefix.flv")
-        this.flvTagReader = FlvTagReader(inputStream, this.logger)
+        this@LiveStreamRepairContext.flvTagReader = FlvTagReader(inputStream, this@LiveStreamRepairContext.logger)
         processChain = FlvTagProcessChain<Tag>()
-            .addProcessNode(TagTimestampProcessNode(this.logger))
-            .addProcessNode(TagDataProcessNode(this.logger))
-            .collect(this::writeTag)
-        this.flvWriteJob = createFlvWriteJob()
+            .addProcessNode(TagTimestampProcessNode(this@LiveStreamRepairContext.logger))
+            .addProcessNode(TagDataProcessNode(this@LiveStreamRepairContext.logger))
+            .collect(this@LiveStreamRepairContext::writeTag)
+        this@LiveStreamRepairContext.flvWriteJob = createFlvWriteJob()
     }
 
-    override suspend fun closeAsync() {
+    override suspend fun close() {
         if (closed) return
         closed = true
         this.flvWriteJob?.cancelAndJoin()
@@ -77,18 +77,19 @@ class LiveStreamRepairContext(
             this.flvTagReader = null
             this.flvWriter?.close()
             this.flvWriter = null
+            scope.cancel()
         }
     }
 
     private fun createFlvWriteJob(): Job {
-        return launch {
+        return scope.launch {
             logger.info("开始接收直播流")
             while (isActive) {
                 try {
                     val tag = flvTagReader?.readNextTagAsync() ?: break
                     processChain.startProceed(tag)
-                } catch (_: CancellationException) {
-
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
                 }
@@ -99,16 +100,16 @@ class LiveStreamRepairContext(
         }
     }
 
-    private fun writeTag(tag: Tag?) {
+    private fun writeTag(tag: Tag?){
         if (tag == null) return
         synchronized(writeLock) {
             if (closed) return
             when (tag.getTagType()) {
                 TagType.SCRIPT -> {
-                    this.flvWriter?.writeFlvHeader()
-                    this.previousScriptTag = tag
-                    this.flvWriter?.writeFlvScriptTag(tag)
-                    this.previousScriptTagBinaryLength.set(tag.binaryLength)
+                    this@LiveStreamRepairContext.flvWriter?.writeFlvHeader()
+                    this@LiveStreamRepairContext.previousScriptTag = tag
+                    this@LiveStreamRepairContext.flvWriter?.writeFlvScriptTag(tag)
+                    this@LiveStreamRepairContext.previousScriptTagBinaryLength.set(tag.binaryLength)
                 }
                 TagType.VIDEO -> {
                     if (::previousScriptTag.isInitialized) {
@@ -119,7 +120,7 @@ class LiveStreamRepairContext(
                 }
                 TagType.AUDIO -> {
                     if (::previousScriptTag.isInitialized) {
-                        this.flvWriter?.writeFlvData(tag)
+                        this@LiveStreamRepairContext.flvWriter?.writeFlvData(tag)
                     } else {
                         writeTag(newScriptTag())
                     }

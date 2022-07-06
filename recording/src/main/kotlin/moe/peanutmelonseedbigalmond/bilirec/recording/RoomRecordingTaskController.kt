@@ -4,14 +4,13 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import moe.peanutmelonseedbigalmond.bilirec.closeQuietlyAsync
-import moe.peanutmelonseedbigalmond.bilirec.interfaces.AsyncCloseable
+import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.RecordTaskFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.DanmakuRecordTask
-import okhttp3.internal.closeQuietly
 import org.greenrobot.eventbus.EventBus
 import org.greenrobot.eventbus.Subscribe
 import org.greenrobot.eventbus.ThreadMode
@@ -23,9 +22,10 @@ import kotlin.coroutines.coroutineContext
 class RoomRecordingTaskController(
     private val room: Room,
     coroutineContext: CoroutineContext
-) : AsyncCloseable, CoroutineScope by CoroutineScope(coroutineContext) {
+) : SuspendableCloseable {
     private val logger = LoggingFactory.getLogger(this.room.roomConfig.roomId, this)
     private val startAndStopLock = Mutex()
+    private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     @Volatile
     private var videoRecordingTask: BaseRecordTask? = null
@@ -38,43 +38,47 @@ class RoomRecordingTaskController(
     @Volatile
     private var closed = false
 
-    suspend fun prepareAsync() {
-        EventBus.getDefault().register(this)
+    suspend fun prepare() = withContext(scope.coroutineContext) {
+        EventBus.getDefault().register(this@RoomRecordingTaskController)
         if (danmakuRecordingTask != null) {
-            danmakuRecordingTask!!.closeQuietlyAsync()
+            danmakuRecordingTask!!.close()
             danmakuRecordingTask = null
         }
         danmakuRecordingTask = DanmakuRecordTask(this@RoomRecordingTaskController.room, coroutineContext)
-        danmakuRecordingTask!!.prepareAsync()
+        danmakuRecordingTask!!.prepare()
         if (this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) {
-            videoRecordingTask = RecordTaskFactory.getRecordTask(this@RoomRecordingTaskController.room)
-            videoRecordingTask!!.prepareAsync()
+            videoRecordingTask = RecordTaskFactory.getRecordTask(
+                this@RoomRecordingTaskController.room,
+                this@RoomRecordingTaskController.scope.coroutineContext
+            )
+            videoRecordingTask!!.prepare()
         }
     }
 
-    override suspend fun closeAsync() {
+    override suspend fun close() {
         startAndStopLock.withLock {
             if (closed) return@withLock
 
-            requestStopAsync()
+            requestStop()
             videoRecordingTask?.closeQuietlyAsync()
             danmakuRecordingTask!!.closeQuietlyAsync()
             videoRecordingTask = null
             danmakuRecordingTask = null
+            scope.cancel()
         }
         EventBus.getDefault().unregister(this@RoomRecordingTaskController)
     }
 
-    suspend fun requestStopAsync() {
+    suspend fun requestStop() = withContext(scope.coroutineContext) {
         startAndStopLock.withLock {
             if (!started) return@withLock
-            videoRecordingTask?.stopRecordingAsync()
-            danmakuRecordingTask!!.stopRecordingAsync()
+            videoRecordingTask?.stopRecording()
+            danmakuRecordingTask!!.stopRecording()
             started = false
         }
     }
 
-    suspend fun requestStartAsync() {
+    suspend fun requestStart() = withContext(scope.coroutineContext) {
         startAndStopLock.withLock {
             if (started) return@withLock
             if (!this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) return@withLock
@@ -87,7 +91,7 @@ class RoomRecordingTaskController(
             if (!baseDir.exists()) baseDir.mkdirs()
             val baseFile =
                 File(baseDir, removeIllegalChar(generateFileName(this@RoomRecordingTaskController.room, startTime)))
-            videoRecordingTask!!.startAsync(baseFile.canonicalPath)
+            videoRecordingTask!!.start(baseFile.canonicalPath)
             started = true
         }
     }
@@ -97,7 +101,7 @@ class RoomRecordingTaskController(
     fun onRecordFileOpened(e: RecordFileOpenedEvent) {
         if (e.roomId == this.room.roomConfig.roomId) {
             logger.info("新建录制文件：${e.baseFileName}")
-            launch { danmakuRecordingTask!!.startAsync(e.baseFileName) }
+            scope.launch { danmakuRecordingTask!!.start(e.baseFileName) }
         }
     }
 
@@ -105,7 +109,7 @@ class RoomRecordingTaskController(
     fun onRecordFileClosed(e: RecordFileClosedEvent) {
         if (e.roomId == this.room.roomConfig.roomId) {
             logger.info("录制结束")
-            launch { danmakuRecordingTask!!.stopRecordingAsync() }
+            scope.launch { danmakuRecordingTask!!.stopRecording() }
         }
     }
 

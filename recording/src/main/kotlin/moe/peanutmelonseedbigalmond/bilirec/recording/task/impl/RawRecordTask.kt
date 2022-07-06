@@ -21,8 +21,10 @@ import kotlin.coroutines.coroutineContext
  */
 class RawRecordTask(
     room: Room,
+    coroutineContext: CoroutineContext
 ) : BaseRecordTask(room) {
     private val startAndStopLock = Mutex()
+    private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     @Volatile
     private var started = false
@@ -34,21 +36,22 @@ class RawRecordTask(
 
     @Volatile
     private var recordingJob: Job? = null
-    override suspend fun closeAsync() {
+    override suspend fun close() {
         startAndStopLock.withLock {
             if (closed) return@withLock
             mClosed = true
-            stopRecordingAsync()
+            stopRecording()
+            scope.cancel()
         }
     }
 
-    override suspend fun prepareAsync() {
+    override suspend fun prepare() {
     }
 
-    override suspend fun startAsync(baseFileName: String) {
+    override suspend fun start(baseFileName: String) {
         startAndStopLock.withLock {
             if (started) return@withLock
-            createLiveStreamRepairContextAsync()
+            createLiveStreamRepairContext()
             if (this@RawRecordTask.recordingJob == null) {
                 this@RawRecordTask.recordingJob = createRecordingJob(baseFileName)
             }
@@ -58,7 +61,7 @@ class RawRecordTask(
         }
     }
 
-    override suspend fun stopRecordingAsync() {
+    override suspend fun stopRecording() {
         startAndStopLock.withLock {
             if (!started) return@withLock
             started = false
@@ -68,37 +71,35 @@ class RawRecordTask(
     }
 
     private fun createRecordingJob(baseFileName: String): Job {
-        return runBlocking {
-            return@runBlocking launch(
-                Dispatchers.IO,
-                start = CoroutineStart.LAZY
-            ) {
-                val newFileName = File("${baseFileName}_raw.flv")
-                val directory = newFileName.parentFile
-                if (!directory.exists()) {
-                    directory.mkdirs()
-                }
+        return scope.launch(
+            Dispatchers.IO,
+            start = CoroutineStart.LAZY
+        ) {
+            val newFileName = File("${baseFileName}_raw.flv")
+            val directory = newFileName.parentFile
+            if (!directory.exists()) {
+                directory.mkdirs()
+            }
 
-                val fileOutputStream = newFileName.outputStream()
-                EventBus.getDefault().post(RecordFileOpenedEvent(roomId = room.roomConfig.roomId, baseFileName))
-                var len: Int
-                val buffer = ByteArray(4096)
-                while (isActive) {
-                    try {
-                        len = withContext(Dispatchers.IO) { liveStream.read(buffer) }
-                        if (len == -1) break
+            val fileOutputStream = newFileName.outputStream()
+            EventBus.getDefault().post(RecordFileOpenedEvent(roomId = room.roomConfig.roomId, baseFileName))
+            var len: Int
+            val buffer = ByteArray(4096)
+            while (isActive) {
+                try {
+                    len = withContext(Dispatchers.IO) { liveStream.read(buffer) }
+                    if (len == -1) break
 
-                        withContext(Dispatchers.IO) { fileOutputStream.write(buffer, 0, len) }
-                    } catch (_: CancellationException) {
-
-                    } catch (e: Exception) {
-                        EventBus.getDefault().post(RecordingThreadErrorEvent(room, e))
-                    }
+                    withContext(Dispatchers.IO) { fileOutputStream.write(buffer, 0, len) }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    EventBus.getDefault().post(RecordingThreadErrorEvent(room, e))
                 }
-                fileOutputStream.closeQuietly()
-                withContext(NonCancellable) {
-                    EventBus.getDefault().post(RecordingThreadExitedEvent(room))
-                }
+            }
+            fileOutputStream.closeQuietly()
+            withContext(NonCancellable) {
+                EventBus.getDefault().post(RecordingThreadExitedEvent(room))
             }
         }
     }
