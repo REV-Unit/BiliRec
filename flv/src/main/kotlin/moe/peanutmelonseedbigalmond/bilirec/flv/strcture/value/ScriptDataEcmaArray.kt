@@ -44,6 +44,6 @@ class ScriptDataEcmaArray(private val map: LinkedHashMap<String, BaseScriptDataV
     }
 
     override fun toString(): String {
-        return "$type, Count=${size}"
+        return "$type[$map, Count=${size}]"
     }
 }

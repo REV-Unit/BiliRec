@@ -46,7 +46,7 @@ class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> =
     }
 
     override fun toString(): String {
-        return "ScriptData(list size=${list.size}, binaryData size=${binaryData.size})"
+        return "ScriptData(data=$list, binaryData size=${binaryData.size})"
     }
 
     companion object {

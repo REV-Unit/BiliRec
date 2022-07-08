@@ -38,7 +38,7 @@ open class ScriptDataObject(private val map: LinkedHashMap<String, BaseScriptDat
     }
 
     override fun toString(): String {
-        return "$type, Count=${size}"
+        return "$type[$map, Count=${size}]"
     }
 
 }
