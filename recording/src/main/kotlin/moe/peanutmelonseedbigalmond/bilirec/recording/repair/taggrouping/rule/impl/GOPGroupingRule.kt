@@ -3,6 +3,9 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.i
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagFlag
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.getTagFlag
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.isDataTag
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.isKeyframeData
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.BaseTagGroupingRule
 
 /**

@@ -1,6 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl
 
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.isHeaderTag
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.BaseTagGroupingRule
 
 // 所有连续的 HeaderTag 一个组

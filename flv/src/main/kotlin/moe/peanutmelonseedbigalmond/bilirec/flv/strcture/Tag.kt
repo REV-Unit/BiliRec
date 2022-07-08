@@ -83,32 +83,6 @@ class Tag : Writeable {
         outputStream.write((bytes.size + 11).toByteArray()) // 每个Tag块最后的长度包含Tag头的长度，所以此处加上Tag头的长度（11字节）
     }
 
-    fun getTagFlag(): TagFlag {
-        return when (this.getTagType()) {
-            TagType.AUDIO -> (data as AudioData).tagFlag
-            TagType.VIDEO -> (data as VideoData).tagFlag
-            else -> TagFlag.NONE
-        }
-    }
-
-    // region Tag 数据类型
-    fun isScriptTag(): Boolean =
-        this.getTagType() == TagType.SCRIPT
-
-    fun isHeaderTag(): Boolean = getTagFlag() == TagFlag.HEADER
-
-    fun isEndTag(): Boolean = getTagFlag() == TagFlag.END
-
-    fun isDataTag(): Boolean {
-        val tagType = getTagType()
-        return tagType == TagType.AUDIO || tagType == TagType.VIDEO
-    }
-
-    fun isKeyframeData(): Boolean {
-        return this.getTagType() == TagType.VIDEO && (this.data as VideoData).frameType == FrameType.KEY_FRAME
-    }
-    // endregion
-
     companion object {
         fun timestampToByteArray(timestamp: Int): ByteArray {
             val tsArray = timestamp.toByteArray()
