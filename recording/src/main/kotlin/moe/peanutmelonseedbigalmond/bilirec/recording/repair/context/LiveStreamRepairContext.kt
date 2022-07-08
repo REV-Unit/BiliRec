@@ -88,6 +88,8 @@ class LiveStreamRepairContext(
                 try {
                     val tag = flvTagReader?.readNextTagAsync() ?: break
                     processChain.startProceed(tag)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
                 }

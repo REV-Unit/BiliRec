@@ -17,6 +17,7 @@ import struct.JavaStruct
 import java.io.*
 import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.coroutines.coroutineContext
 
 /**
  * [flv 结构解析](https://zhuanlan.zhihu.com/p/83346973)
@@ -47,8 +48,8 @@ class FlvTagReader(
         }
     }
 
-    suspend fun readNextTagAsync(): Tag? {
-        if (closed) return null
+    suspend fun readNextTagAsync(): Tag? = withContext(coroutineContext){
+        if (closed) return@withContext null
         if (!this@FlvTagReader.fileHeader) {
             val t = try {
                 parseFileHeaderAsync(inputStream)
@@ -59,10 +60,10 @@ class FlvTagReader(
             if (t) {
                 this@FlvTagReader.fileHeader = true
             } else {
-                return null
+                return@withContext null
             }
         }
-        return try {
+        return@withContext try {
             parseTagDataAsync(inputStream)
         } catch (e: IOException) {
             logger.warn("FlvTagReader: ${e.localizedMessage}")
@@ -75,17 +76,17 @@ class FlvTagReader(
     /**
      * 读取 9 字节的 flv 文件头
      */
-    private suspend fun parseFileHeaderAsync(stream: InputStream): Boolean {
+    private suspend fun parseFileHeaderAsync(stream: InputStream): Boolean = withContext(coroutineContext){
         readLock.withLock {
             val buffer = withContext(Dispatchers.IO) { stream.readNBytes(9) }
-            if (buffer.size < 9) return false
+            if (buffer.size < 9) return@withContext false
             if (String(buffer, 0, 3, Charsets.UTF_8) != "FLV" || buffer[3] != 1.toByte()) {
                 throw FLVDataException("Data is not FLV")
             }
             if (buffer[5] != 0.toByte() || buffer[6] != 0.toByte() || buffer[7] != 0.toByte() || buffer[8] != 9.toByte()) {
                 throw FLVDataException("Not supported FLV format")
             }
-            return true
+            return@withContext true
         }
     }
 
@@ -96,7 +97,7 @@ class FlvTagReader(
      * @throws IOException
      */
     @Throws(IOException::class)
-    private suspend fun parseTagDataAsync(inputStream: InputStream): Tag? {
+    private suspend fun parseTagDataAsync(inputStream: InputStream): Tag? = withContext(coroutineContext){
         readLock.withLock {
             withContext(Dispatchers.IO) { inputStream.skipNBytes(4) }// 跳过第一个无意义的 Tag
             val data = withContext(Dispatchers.IO) { inputStream.readNBytes(11) }
@@ -106,7 +107,7 @@ class FlvTagReader(
             val tag = Tag()
             JavaStruct.unpack(tag, data, ByteOrder.BIG_ENDIAN)
 
-            if (tag.getTagType() == TagType.UNKNOWN) return null
+            if (tag.getTagType() == TagType.UNKNOWN) return@withContext null
 
             when (tag.getTagType()) {
                 TagType.AUDIO -> {
@@ -128,7 +129,7 @@ class FlvTagReader(
             }
 
             tag.tagIndex = tagIndex.getAndIncrement()
-            return tag
+            return@withContext tag
         }
     }
     // endregion
