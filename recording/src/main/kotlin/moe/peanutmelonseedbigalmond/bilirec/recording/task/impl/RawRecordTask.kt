@@ -10,6 +10,7 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEve
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExitedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
+import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseVideoRecordTask
 import okhttp3.internal.closeQuietly
 import org.greenrobot.eventbus.EventBus
 import java.io.File
@@ -22,7 +23,7 @@ import kotlin.coroutines.CoroutineContext
 class RawRecordTask(
     room: Room,
     coroutineContext: CoroutineContext
-) : BaseRecordTask(room) {
+) : BaseVideoRecordTask(room) {
     private val startAndStopLock = Mutex()
     private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 

@@ -8,6 +8,7 @@ import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
+import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseVideoRecordTask
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.RecordTaskFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.DanmakuRecordTask
 import org.greenrobot.eventbus.EventBus
@@ -26,7 +27,7 @@ class RoomRecordingTaskController(
     private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     @Volatile
-    private var videoRecordingTask: BaseRecordTask? = null
+    private var videoRecordingTask: BaseVideoRecordTask? = null
     private var danmakuRecordingTask: BaseRecordTask? = null
 
     @Volatile

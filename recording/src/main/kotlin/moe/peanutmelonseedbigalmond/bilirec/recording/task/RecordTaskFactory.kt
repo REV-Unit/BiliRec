@@ -7,7 +7,7 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.StrandRecordTask
 import kotlin.coroutines.CoroutineContext
 
 object RecordTaskFactory {
-    fun getRecordTask(room: Room, coroutineContext: CoroutineContext): BaseRecordTask =
+    fun getRecordTask(room: Room, coroutineContext: CoroutineContext): BaseVideoRecordTask =
         when (room.roomConfig.recordMode) {
             RoomConfig.RecordMode.RAW -> RawRecordTask(room, coroutineContext)
             RoomConfig.RecordMode.STRAND -> StrandRecordTask(room, coroutineContext)

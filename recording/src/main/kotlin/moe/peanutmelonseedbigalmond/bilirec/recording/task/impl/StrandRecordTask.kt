@@ -9,13 +9,14 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEve
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.context.LiveStreamRepairContext
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
+import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseVideoRecordTask
 import org.greenrobot.eventbus.EventBus
 import kotlin.coroutines.CoroutineContext
 
 class StrandRecordTask(
     room: Room,
     coroutineContext: CoroutineContext
-) : BaseRecordTask(room) {
+) : BaseVideoRecordTask(room) {
     private val startAndStopLock = Mutex()
     private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
