@@ -2,8 +2,7 @@ package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import moe.peanutmelonseedbigalmond.bilirec.closeQuietlyAsync
+import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
@@ -45,42 +44,42 @@ class RoomRecordingTaskController(
         }
         danmakuRecordingTask = DanmakuRecordTask(this@RoomRecordingTaskController.room, coroutineContext)
         danmakuRecordingTask!!.prepare()
-        if (this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) {
-            videoRecordingTask = RecordTaskFactory.getRecordTask(
-                this@RoomRecordingTaskController.room,
-                this@RoomRecordingTaskController.scope.coroutineContext
-            )
-            videoRecordingTask!!.prepare()
-        }
     }
 
     override suspend fun close() {
-        startAndStopLock.withLock {
-            if (closed) return@withLock
-
+        startAndStopLock.withReentrantLock {
+            if (closed) return@withReentrantLock
+            closed = true
             requestStop()
-            videoRecordingTask?.closeQuietlyAsync()
-            danmakuRecordingTask!!.closeQuietlyAsync()
+            videoRecordingTask?.close()
             videoRecordingTask = null
+            danmakuRecordingTask!!.close()
             danmakuRecordingTask = null
             scope.cancel()
         }
         EventBus.getDefault().unregister(this@RoomRecordingTaskController)
     }
 
-    suspend fun requestStop() = withContext(scope.coroutineContext) {
-        startAndStopLock.withLock {
-            if (!started) return@withLock
+    suspend fun requestStop() = startAndStopLock.withReentrantLock {
+        withContext(scope.coroutineContext) {
+            if (!started) return@withContext
             videoRecordingTask?.stopRecording()
+            videoRecordingTask?.close()
+            videoRecordingTask = null
             danmakuRecordingTask!!.stopRecording()
             started = false
         }
     }
 
-    suspend fun requestStart() = withContext(scope.coroutineContext) {
-        startAndStopLock.withLock {
-            if (started) return@withLock
-            if (!this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) return@withLock
+    suspend fun requestStart() = startAndStopLock.withReentrantLock {
+        withContext(scope.coroutineContext) {
+            if (started) return@withContext
+            if (!this@RoomRecordingTaskController.room.roomConfig.enableAutoRecord) return@withContext
+            videoRecordingTask = RecordTaskFactory.getRecordTask(
+                this@RoomRecordingTaskController.room,
+                this@RoomRecordingTaskController.scope.coroutineContext
+            )
+            videoRecordingTask!!.prepare()
             val startTime = OffsetDateTime.now()
             val baseDir = File(
                 removeIllegalChar(

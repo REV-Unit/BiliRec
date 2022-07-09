@@ -1,11 +1,9 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.task.impl
 
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withContext
+import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
@@ -35,9 +33,9 @@ class StrandRecordTask(
         // 准备时不需要做任何事
     }
 
-    override suspend fun start(baseFileName: String) = withContext(scope.coroutineContext) {
-        startAndStopLock.withLock {
-            if (started) return@withLock
+    override suspend fun start(baseFileName: String) = startAndStopLock.withLock {
+        withContext(scope.coroutineContext) {
+            if (started) return@withContext
             createLiveStreamRepairContext()
             repairContext =
                 LiveStreamRepairContext(liveStream, room, baseFileName, this@StrandRecordTask.scope.coroutineContext)
@@ -48,9 +46,9 @@ class StrandRecordTask(
         }
     }
 
-    override suspend fun stopRecording() = withContext(scope.coroutineContext) {
-        startAndStopLock.withLock {
-            if (!started) return@withLock
+    override suspend fun stopRecording() = startAndStopLock.withReentrantLock {
+        withContext(scope.coroutineContext) {
+            if (!started) return@withContext
             started = false
             logger.info("停止接收直播流")
             repairContext?.close()
@@ -60,8 +58,8 @@ class StrandRecordTask(
     }
 
     override suspend fun close() {
-        startAndStopLock.withLock {
-            if (closed) return@withLock
+        startAndStopLock.withReentrantLock {
+            if (closed) return@withReentrantLock
             mClosed = true
             stopRecording()
             scope.cancel()

@@ -2,7 +2,7 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.task.impl
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.client.DanmakuTcpClient
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.event.DanmakuClientEvent
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.event.DanmakuEvents
@@ -21,12 +21,17 @@ class DanmakuRecordTask(
     @Volatile
     private var danmakuWriter: DanmakuWriter? = null
     private var writeLock = Mutex()
+
+    @Volatile
+    private var danmakuClientClosedManually = false
     private lateinit var danmakuClient: DanmakuTcpClient
     private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     @Volatile
     private var recording = false
-    override val closed: Boolean = recording
+    @Volatile
+    private var mClosed=false
+    override val closed: Boolean = mClosed
 
     override suspend fun prepare() = withContext(scope.coroutineContext) {
         EventBus.getDefault().register(this@DanmakuRecordTask)
@@ -34,9 +39,9 @@ class DanmakuRecordTask(
         connectToDanmakuServer()
     }
 
-    override suspend fun start(baseFileName: String) = withContext(scope.coroutineContext) {
-        writeLock.withLock {
-            if (danmakuWriter != null) return@withLock
+    override suspend fun start(baseFileName: String) = writeLock.withReentrantLock {
+        withContext(scope.coroutineContext) {
+            if (danmakuWriter != null) return@withContext
             danmakuWriter = DanmakuWriter(
                 room = this@DanmakuRecordTask.room,
                 outputFileName = "$baseFileName.xml"
@@ -45,10 +50,10 @@ class DanmakuRecordTask(
         }
     }
 
-    override suspend fun stopRecording() = withContext(scope.coroutineContext) {
-        writeLock.withLock {
-            if (!recording) return@withLock
-            if (danmakuWriter == null) return@withLock
+    override suspend fun stopRecording() = writeLock.withReentrantLock {
+        withContext(scope.coroutineContext) {
+            if (!recording) return@withContext
+            if (danmakuWriter == null) return@withContext
             recording = false
             danmakuWriter!!.close()
             danmakuWriter = null
@@ -56,17 +61,23 @@ class DanmakuRecordTask(
     }
 
     override suspend fun close() {
+        if (mClosed) return
+        mClosed=true
         stopRecording()
+        danmakuClientClosedManually = true
+        danmakuClient.close()
         scope.cancel()
         EventBus.getDefault().unregister(this)
     }
 
     private suspend fun connectToDanmakuServer(requireDelay: Boolean = false): Unit =
         withContext(scope.coroutineContext) {
-            if (closed) return@withContext
             return@withContext try {
+                if (closed || !isActive) return@withContext
                 if (requireDelay) delay(5000)
                 danmakuClient.connect()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 logger.error("连接弹幕服务器出错：${e.localizedMessage}")
                 logger.debug(e.stackTraceToString())
@@ -79,17 +90,17 @@ class DanmakuRecordTask(
     fun onDanmakuReceived(events: DanmakuEvents.DanmakuReceivedEvent) {
         if (events.roomId == this.room.roomConfig.roomId) {
             scope.launch {
-                writeLock.withLock {
+                writeLock.withReentrantLock {
                     if (recording) {
                         logger.trace("收到弹幕：${events.danmakuModel.username} -> ${events.danmakuModel.commentText} (messageType=${events.danmakuModel.messageType}, lotteryDanmaku=${events.danmakuModel.lotteryDanmaku})")
                         // 过滤掉抽奖弹幕
-                        if (room.roomConfig.filterLotteryDanmaku && events.danmakuModel.lotteryDanmaku) return@withLock
+                        if (room.roomConfig.filterLotteryDanmaku && events.danmakuModel.lotteryDanmaku) return@withReentrantLock
                         for (filterRegex in this@DanmakuRecordTask.room.roomConfig.danmakuFilterRegex) {
                             try {
                                 if (Regex(filterRegex).containsMatchIn(
                                         events.danmakuModel.commentText ?: ""
                                     )
-                                ) return@withLock
+                                ) return@withReentrantLock
                             } catch (_: Exception) {
                                 // 正则表达式解析出错，忽略
                             }
@@ -105,7 +116,7 @@ class DanmakuRecordTask(
     fun onGiftReceived(events: DanmakuEvents.GiftReceivedEvent) {
         if (events.roomId == this.room.roomConfig.roomId) {
             scope.launch {
-                writeLock.withLock {
+                writeLock.withReentrantLock {
                     if (recording) {
                         logger.trace("收到礼物：${events.danmakuModel.username} -> ${events.danmakuModel.giftName} x ${events.danmakuModel.giftCount}")
                         danmakuWriter?.writeGiftRecord(events.danmakuModel)
@@ -119,7 +130,7 @@ class DanmakuRecordTask(
     fun onAnchorReceived(events: DanmakuEvents.AnchorReceivedEvent) {
         if (events.roomId == this.room.roomConfig.roomId) {
             scope.launch {
-                writeLock.withLock {
+                writeLock.withReentrantLock {
                     if (recording) {
                         danmakuWriter?.writeGuardBuyRecord(events.danmakuModel)
                     }
@@ -132,7 +143,7 @@ class DanmakuRecordTask(
     fun onSuperChatReceived(events: DanmakuEvents.SuperChatReceivedEvent) {
         if (events.roomId == this.room.roomConfig.roomId) {
             scope.launch {
-                writeLock.withLock {
+                writeLock.withReentrantLock {
                     if (recording) {
                         logger.trace("收到SuperChat：${events.danmakuModel.username} -> ${events.danmakuModel.commentText}")
                         danmakuWriter?.writeSuperChatRecord(events.danmakuModel)
@@ -160,6 +171,7 @@ class DanmakuRecordTask(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onWssClientClosed(event: DanmakuClientEvent.ClientClosed) {
         if (event.roomId == this@DanmakuRecordTask.room.roomConfig.roomId) {
+            if (danmakuClientClosedManually) return
             logger.info("弹幕服务器已断开，正在重连")
             scope.launch { connectToDanmakuServer(true) }
         }
@@ -170,6 +182,7 @@ class DanmakuRecordTask(
         if (event.roomId == this.room.roomConfig.roomId) {
             logger.error("发生错误：${event.throwable.localizedMessage}")
             logger.debug(event.throwable.stackTraceToString())
+            scope.launch { danmakuClient.disconnect() }
         }
     }
     // endregion

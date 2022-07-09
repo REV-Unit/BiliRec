@@ -1,6 +1,8 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import java.util.concurrent.ConcurrentHashMap
 
@@ -27,9 +29,9 @@ class Recording private constructor(private val innerMap: ConcurrentHashMap<Long
         }
     }
 
-    suspend fun unregisterAllTasksAsync() {
+    suspend fun unregisterAllTasksAsync() = supervisorScope {
         for (key in getAllTasks()) {
-            unregisterTaskAsync(key)
+            launch { unregisterTaskAsync(key) }
         }
     }
 

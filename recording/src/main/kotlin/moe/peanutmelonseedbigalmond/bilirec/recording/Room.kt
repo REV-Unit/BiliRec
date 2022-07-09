@@ -2,8 +2,8 @@ package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
+import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.events.RoomInfoRefreshEvent
 import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
@@ -32,9 +32,9 @@ class Room(
     var living = false
         private set(value) {
             if (value) {
-                runBlocking(scope.coroutineContext) { requestStart() }
+                scope.launch { requestStart() }
             } else {
-                runBlocking(scope.coroutineContext) { requestStop() }
+                scope.launch { requestStop() }
             }
             field = value
         }
@@ -76,16 +76,18 @@ class Room(
             updateRoomInfoJob = createUpdateRoomInfoJob()
             recordingTaskController = RoomRecordingTaskController(this@Room, coroutineContext)
             recordingTaskController.prepare()
-            while (isActive) {
-                try {
+            try {
+                while (isActive) {
                     refreshRoomInfo()
                     logger.info("获取直播间信息成功：username=$userName, title=$title, parentAreaName=$parentAreaName, childAreaName=$childAreaName, living=$living")
                     break
-                } catch (e: Exception) {
-                    logger.error("刷新房间信息失败，重试：$e")
-                    logger.debug(e.stackTraceToString())
-                    delay(1000)
                 }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                logger.error("刷新房间信息失败，重试：$e")
+                logger.debug(e.stackTraceToString())
+                delay(1000)
             }
             delay(5000)
             updateRoomInfoJob.start()
@@ -95,6 +97,7 @@ class Room(
     override suspend fun close() {
         if (closed) return
         requestStop()
+        recordingTaskController.close()
         updateRoomInfoJob.cancelAndJoin()
         this@Room.scope.cancel()
         closed = true
@@ -102,14 +105,16 @@ class Room(
     }
 
     // region start and stop
-    private suspend fun requestStart() = withContext(scope.coroutineContext) {
-        startAndStopLock.withLock {
-            if (closed) return@withLock
+    private suspend fun requestStart() = startAndStopLock.withReentrantLock {
+        withContext(scope.coroutineContext) {
+            if (closed) return@withContext
             requireRestart = true
             while (coroutineContext.isActive) {
                 try {
                     recordingTaskController.requestStart()
                     break
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.error("启动录制任务失败，1秒后重试")
                     logger.debug(e.stackTraceToString())
@@ -119,8 +124,8 @@ class Room(
         }
     }
 
-    private suspend fun requestStop() = withContext(scope.coroutineContext) {
-        startAndStopLock.withLock {
+    private suspend fun requestStop() = startAndStopLock.withReentrantLock {
+        withContext(scope.coroutineContext) {
             requireRestart = false
             recordingTaskController.requestStop()
         }
@@ -175,20 +180,19 @@ class Room(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onRecordingThreadExited(event: RecordingThreadExitedEvent) {
         if (event.room.roomConfig.roomId == this.roomConfig.roomId) {
-            runBlocking(scope.coroutineContext) {
-                this@Room.recordingTaskController.requestStop()
-                if (!requireRestart) return@runBlocking
-                // 重试
-                launch {
-                    while (isActive) {
-                        try {
-                            getRoomInfo()
-                            break
-                        } catch (e: Exception) {
-                            logger.error("重试启动直播流时出现异常：${e.localizedMessage}")
-                            logger.debug(e.stackTraceToString())
-                            delay(5000)
-                        }
+            runBlocking(scope.coroutineContext) { this@Room.recordingTaskController.requestStop() }
+            // 重试
+            scope.launch {
+                while (isActive && requireRestart) {
+                    try {
+                        getRoomInfo()
+                        break
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        logger.error("重试启动直播流时出现异常：${e.localizedMessage}")
+                        logger.debug(e.stackTraceToString())
+                        delay(5000)
                     }
                 }
             }
@@ -202,10 +206,12 @@ class Room(
             while (isActive) {
                 try {
                     getRoomInfo()
+                    delay(60 * 1000)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     logger.error("获取直播间信息时出现异常：${e.localizedMessage}")
                     logger.debug(e.stackTraceToString())
-                } finally {
                     delay(60 * 1000)
                 }
             }

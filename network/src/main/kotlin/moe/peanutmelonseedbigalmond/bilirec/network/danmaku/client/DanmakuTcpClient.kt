@@ -3,7 +3,7 @@ package moe.peanutmelonseedbigalmond.bilirec.network.danmaku.client
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.PackUtils
@@ -24,7 +24,7 @@ class DanmakuTcpClient(
     private val roomId: Long,
     coroutineContext: CoroutineContext
 ) : SuspendableCloseable {
-    private val lock = Mutex()
+    private val closeLock = Mutex()
     private var socket: Socket? = null
     private var connected: Boolean = false
     private var inputStream: InputStream? = null
@@ -65,23 +65,25 @@ class DanmakuTcpClient(
         }
     }
 
-    private suspend fun disconnect() {
-        lock.withLock {
+    suspend fun disconnect() {
+        closeLock.withReentrantLock {
             if (connected) {
-                outputStream?.close()
-                outputStream = null
-                inputStream?.close()
-                inputStream = null
-                socket?.close()
-                socket = null
                 connected = false
+                withContext(Dispatchers.IO) { outputStream?.close() }
+                sendHeartbeatJob.cancelAndJoin()
+                outputStream = null
+                withContext(Dispatchers.IO) { inputStream?.close() }
+                receiveMessageJob.cancelAndJoin()
+                inputStream = null
+                withContext(Dispatchers.IO) { socket?.close() }
+                socket = null
                 EventBus.getDefault().post(DanmakuClientEvent.ClientClosed(this, this.roomId))
             }
         }
     }
 
     override suspend fun close() {
-        lock.withLock {
+        closeLock.withReentrantLock {
             disconnect()
             scope.cancel()
         }
@@ -126,9 +128,15 @@ class DanmakuTcpClient(
     private suspend fun send(messageBody: ByteArray) {
         withContext(scope.coroutineContext) {
             if (connected) {
-                withContext(Dispatchers.IO) {
-                    outputStream?.write(messageBody)
-                    outputStream?.flush()
+                try {
+                    withContext(Dispatchers.IO) {
+                        outputStream?.write(messageBody)
+                        outputStream?.flush()
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+
                 }
             }
         }
@@ -168,16 +176,19 @@ class DanmakuTcpClient(
                     if (length < 4) continue
                     dispatchMessage(lengthByte + body)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
-                EventBus.getDefault()
-                    .post(
-                        DanmakuClientEvent.ClientFailure(
-                            this@DanmakuTcpClient,
-                            this@DanmakuTcpClient.roomId,
-                            e
+                if (connected) {
+                    EventBus.getDefault()
+                        .post(
+                            DanmakuClientEvent.ClientFailure(
+                                this@DanmakuTcpClient,
+                                this@DanmakuTcpClient.roomId,
+                                e
+                            )
                         )
-                    )
-                this@DanmakuTcpClient.disconnect()
+                }
             }
         }
     }
