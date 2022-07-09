@@ -17,6 +17,7 @@ import org.greenrobot.eventbus.ThreadMode
 import java.io.File
 import java.time.OffsetDateTime
 import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 
 class RoomRecordingTaskController(
     private val room: Room,
@@ -57,18 +58,17 @@ class RoomRecordingTaskController(
     override suspend fun close() {
         startAndStopLock.withLock {
             if (closed) return@withLock
-
+            scope.cancel()
             requestStop()
             videoRecordingTask?.closeQuietlyAsync()
             danmakuRecordingTask!!.closeQuietlyAsync()
             videoRecordingTask = null
             danmakuRecordingTask = null
-            scope.cancel()
         }
         EventBus.getDefault().unregister(this@RoomRecordingTaskController)
     }
 
-    suspend fun requestStop() = withContext(scope.coroutineContext) {
+    suspend fun requestStop() {
         startAndStopLock.withLock {
             if (!started) return@withLock
             videoRecordingTask?.stopRecording()

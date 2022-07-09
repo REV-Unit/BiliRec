@@ -2,40 +2,32 @@ package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import java.util.concurrent.ConcurrentHashMap
 
-class Recording private constructor(private val innerMap: ConcurrentHashMap<Long, Room>) :
-    Map<Long, Room> by innerMap {
+class Recording private constructor(private val set: HashSet<Room>) : MutableSet<Room> by set {
 
-    suspend fun registerTaskAsync(room: Room, forceUpdate: Boolean = false) {
-        if (forceUpdate) {
-            if (innerMap.contains(room.roomConfig.roomId)) {
-                unregisterTaskAsync(room.roomConfig.roomId)
-                registerTaskAsync(room, false)
-            }
-        } else {
-            if (!innerMap.contains(room.roomConfig.roomId)) {
-                innerMap[room.roomConfig.roomId] = room
-                room.prepare()
-            }
-        }
+    fun registerTaskAsync(room: Room) {
+        set.add(room)
+        room.prepare()
     }
 
-    suspend fun unregisterTaskAsync(roomId: Long) {
-        withContext(Dispatchers.IO) {
-            innerMap.remove(roomId)?.close()
+    suspend fun unregisterTaskAsync(roomId: Long): Room? {
+        return withContext(Dispatchers.IO) {
+            val roomToRemove = set.firstOrNull { it.roomConfig.roomId == roomId || it.shortId == roomId }
+            roomToRemove?.close()
+            this@Recording.remove(roomToRemove)
+            return@withContext roomToRemove
         }
     }
 
     suspend fun unregisterAllTasksAsync() {
-        for (key in getAllTasks()) {
-            unregisterTaskAsync(key)
+        for (room in this) {
+            unregisterTaskAsync(room.roomConfig.roomId)
         }
     }
 
-    fun getAllTasks() = innerMap.keys().toList()
+    fun getAllTasks() = this.toList()
 
     companion object {
-        val INSTANCE = Recording(ConcurrentHashMap())
+        val INSTANCE = Recording(HashSet())
     }
 }

@@ -3,6 +3,8 @@ package moe.peanutmelonseedbigalmond.bilirec.app
 import moe.peanutmelonseedbigalmond.bilirec.config.ConfigReader
 import moe.peanutmelonseedbigalmond.bilirec.config.ConfigRoot
 import moe.peanutmelonseedbigalmond.bilirec.config.ConfigWriter
+import moe.peanutmelonseedbigalmond.bilirec.events.RoomAddEvent
+import moe.peanutmelonseedbigalmond.bilirec.events.RoomDeleteEvent
 import moe.peanutmelonseedbigalmond.bilirec.events.RoomInfoRefreshEvent
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import org.greenrobot.eventbus.EventBus
@@ -43,6 +45,18 @@ object ConfigProcessor {
                 it.title = event.title
             }
         }
+        ConfigWriter.write(curConfig, curConfigFile)
+    }
+
+    @Subscribe(threadMode = ThreadMode.ASYNC)
+    fun onRoomAdd(event: RoomAddEvent) {
+        curConfig.roomConfigs!!.add(event.roomConfig)
+        ConfigWriter.write(curConfig, curConfigFile)
+    }
+
+    @Subscribe(threadMode = ThreadMode.ASYNC)
+    fun onRoomDelete(event: RoomDeleteEvent) {
+        curConfig.roomConfigs!!.removeIf { it.roomId == event.roomId }
         ConfigWriter.write(curConfig, curConfigFile)
     }
 }

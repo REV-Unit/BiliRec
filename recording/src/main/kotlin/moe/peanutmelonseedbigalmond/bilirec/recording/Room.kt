@@ -32,9 +32,9 @@ class Room(
     var living = false
         private set(value) {
             if (value) {
-                runBlocking(scope.coroutineContext) { requestStart() }
+                scope.launch { requestStart() }
             } else {
-                runBlocking(scope.coroutineContext) { requestStop() }
+                scope.launch { requestStop() }
             }
             field = value
         }
@@ -94,9 +94,10 @@ class Room(
 
     override suspend fun close() {
         if (closed) return
+        this@Room.scope.cancel()
         requestStop()
         updateRoomInfoJob.cancelAndJoin()
-        this@Room.scope.cancel()
+        recordingTaskController.close()
         closed = true
         EventBus.getDefault().unregister(this@Room)
     }
@@ -251,4 +252,8 @@ class Room(
         }
     }
     //endregion
+
+    override fun hashCode(): Int {
+        return this.roomConfig.roomId.toInt()
+    }
 }

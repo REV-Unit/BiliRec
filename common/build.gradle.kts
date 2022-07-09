@@ -7,5 +7,5 @@ tasks.jar {
 }
 
 dependencies {
-
+    implementation(project(":config"))
 }
