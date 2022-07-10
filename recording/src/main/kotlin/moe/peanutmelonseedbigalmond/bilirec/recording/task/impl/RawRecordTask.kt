@@ -2,14 +2,12 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.task.impl
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileClosedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordFileOpenedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExitedEvent
-import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseRecordTask
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseVideoRecordTask
 import okhttp3.internal.closeQuietly
 import org.greenrobot.eventbus.EventBus

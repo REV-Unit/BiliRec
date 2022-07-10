@@ -12,11 +12,11 @@ import javax.xml.stream.XMLStreamWriter
 
 class DanmakuWriter(
     private val room: Room,
-    outputFileName: String
+    baseFileName: String
 ) : AutoCloseable {
     private val startTime: OffsetDateTime = OffsetDateTime.now()
     private var writer: XMLStreamWriter
-    private var outputStream: OutputStream = FileOutputStream(outputFileName)
+    private var outputStream: OutputStream = FileOutputStream("$baseFileName.xml")
 
     @Volatile
     private var closed = false
@@ -181,7 +181,7 @@ class DanmakuWriter(
             this.writer.writeAttribute("level", danmakuModel.userGuardLevel.toString())
             this.writer.writeAttribute("count", danmakuModel.giftCount.toString())
             if (room.roomConfig.recordRawDanmakuData) {
-                this.writer.writeAttribute("raw", danmakuModel.rawObject?.get("data")?.toString());
+                this.writer.writeAttribute("raw", danmakuModel.rawObject?.get("data")?.toString())
             }
             this.writer.writeEndElement()
         }

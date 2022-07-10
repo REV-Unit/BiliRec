@@ -3,7 +3,6 @@ package moe.peanutmelonseedbigalmond.bilirec.network.danmaku.client
 import com.google.gson.Gson
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
-import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.PackUtils
@@ -24,9 +23,13 @@ class DanmakuTcpClient(
     private val roomId: Long,
     coroutineContext: CoroutineContext
 ) : SuspendableCloseable {
-    private val closeLock = Mutex()
+    private val lock = Mutex()
     private var socket: Socket? = null
-    private var connected: Boolean = false
+    private val connected: Boolean
+        get() = this.inputStream != null
+
+    @Volatile
+    private var closed = false
     private var inputStream: InputStream? = null
     private var outputStream: OutputStream? = null
     private val gson = Gson()
@@ -44,49 +47,69 @@ class DanmakuTcpClient(
 
     suspend fun connect() {
         withContext(scope.coroutineContext) {
-            if (connected) return@withContext
-            if (socket == null) {
+            if (closed) return@withContext
+
+            lock.lock()
+            try {
+                if (this@DanmakuTcpClient.connected) return@withContext
+                getDanmakuServerInfo()
+                // 设置socket的超时时间，在两倍心跳包长度的时间内必定能收到或者发送数据
+                // 超过这个时间则认为网络超时
                 socket = Socket()
+                socket?.soTimeout = HEARTBEAT_INTERVAL * 2 + 1000
+                withContext(Dispatchers.IO) {
+                    socket?.connect(
+                        InetSocketAddress(danmakuAddress, danmakuServerPort),
+                        5000
+                    )
+                }
+                this@DanmakuTcpClient.inputStream = withContext(Dispatchers.IO) { socket?.getInputStream()!! }
+                this@DanmakuTcpClient.outputStream = withContext(Dispatchers.IO) { socket?.getOutputStream()!! }
+                this@DanmakuTcpClient.receiveMessageJob = createHandleMessageJob()
+                sendHello()
+                sendHeartbeatJob = createSendHeartbeatJob()
+
+                EventBus.getDefault()
+                    .post(DanmakuClientEvent.ClientOpen(this@DanmakuTcpClient, this@DanmakuTcpClient.roomId))
+            } finally {
+                lock.unlock()
             }
-            getDanmakuServerInfo()
-            // 设置socket的超时时间，在两倍心跳包长度的时间内必定能收到或者发送数据
-            // 超过这个时间则认为网络超时
-            socket?.soTimeout = HEARTBEAT_INTERVAL * 2 + 1000
-            withContext(Dispatchers.IO) { socket?.connect(InetSocketAddress(danmakuAddress, danmakuServerPort), 5000) }
-            this@DanmakuTcpClient.inputStream = withContext(Dispatchers.IO) { socket?.getInputStream() }
-            this@DanmakuTcpClient.outputStream = withContext(Dispatchers.IO) { socket?.getOutputStream() }
-            connected = true
-            this@DanmakuTcpClient.receiveMessageJob = createHandleMessageJob()
-            sendHello()
-            sendHeartbeatJob = createSendHeartbeatJob()
-            sendHeartbeatJob.start()
-            EventBus.getDefault()
-                .post(DanmakuClientEvent.ClientOpen(this@DanmakuTcpClient, this@DanmakuTcpClient.roomId))
         }
     }
 
     suspend fun disconnect() {
-        closeLock.withReentrantLock {
-            if (connected) {
-                connected = false
-                withContext(Dispatchers.IO) { outputStream?.close() }
-                sendHeartbeatJob.cancelAndJoin()
-                outputStream = null
-                withContext(Dispatchers.IO) { inputStream?.close() }
-                receiveMessageJob.cancelAndJoin()
-                inputStream = null
-                withContext(Dispatchers.IO) { socket?.close() }
-                socket = null
-                EventBus.getDefault().post(DanmakuClientEvent.ClientClosed(this, this.roomId))
-            }
+        lock.lock()
+        try {
+            withContext(Dispatchers.IO) { inputStream?.close() }
+            inputStream = null
+            withContext(Dispatchers.IO) { outputStream?.close() }
+            outputStream = null
+
+            sendHeartbeatJob.cancelAndJoin()
+        } finally {
+            lock.unlock()
         }
+        EventBus.getDefault().post(DanmakuClientEvent.ClientDisconnected(this@DanmakuTcpClient, roomId))
     }
 
     override suspend fun close() {
-        closeLock.withReentrantLock {
-            disconnect()
-            scope.cancel()
+        if (closed) return
+
+        if (sendHeartbeatJob.isActive) sendHeartbeatJob.cancelAndJoin()
+        if (receiveMessageJob.isActive) receiveMessageJob.cancelAndJoin()
+        withContext(Dispatchers.IO) { inputStream?.close() }
+        inputStream = null
+        withContext(Dispatchers.IO) { outputStream?.close() }
+        outputStream = null
+        if (lock.isLocked) {
+            lock.unlock()
         }
+
+        scope.cancel()
+
+        this.closed = true
+
+        EventBus.getDefault().post(DanmakuClientEvent.ClientClosed(this, this.roomId))
     }
 
     private suspend fun getDanmakuServerInfo() = withContext(scope.coroutineContext) {
@@ -98,6 +121,7 @@ class DanmakuTcpClient(
         this@DanmakuTcpClient.danmakuServerPort = server.port
     }
 
+    // region 发送消息
     private suspend fun sendMessage(operationCode: DanmakuOperationCode, body: String = "") =
         withContext(scope.coroutineContext) {
             val message = DanmakuMessageData().also {
@@ -142,20 +166,22 @@ class DanmakuTcpClient(
         }
     }
 
+    private fun createSendHeartbeatJob(): Job {
+        return scope.launch {
+            while (isActive) {
+                sendHeartBeat()
+                delay(HEARTBEAT_INTERVAL.toLong())
+            }
+        }
+    }
+    // endregion
+
+    // region 接收消息
     private fun dispatchMessage(messageBody: ByteArray) {
         val message = PackUtils.unpack(messageBody)
         for (m in message) {
             val event = DanmakuEvents.parse(this, this.roomId, m)
             EventBus.getDefault().post(event)
-        }
-    }
-
-    private fun createSendHeartbeatJob(): Job {
-        return scope.launch(start = CoroutineStart.LAZY) {
-            while (isActive) {
-                sendHeartBeat()
-                delay(HEARTBEAT_INTERVAL.toLong())
-            }
         }
     }
 
@@ -179,19 +205,22 @@ class DanmakuTcpClient(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (connected) {
-                    EventBus.getDefault()
-                        .post(
-                            DanmakuClientEvent.ClientFailure(
-                                this@DanmakuTcpClient,
-                                this@DanmakuTcpClient.roomId,
-                                e
-                            )
-                        )
+                EventBus.getDefault().post(
+                    DanmakuClientEvent.ClientFailure(this@DanmakuTcpClient, this@DanmakuTcpClient.roomId, e)
+                )
+            } finally {
+                scope.launch {
+                    try {
+                        disconnect()
+                    }catch (e:CancellationException){
+                        throw e
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
     }
+    // endregion
 
     private fun ByteArray.toInt(): Int =
         this[0].toInt().and(0xff).shl(24).or(

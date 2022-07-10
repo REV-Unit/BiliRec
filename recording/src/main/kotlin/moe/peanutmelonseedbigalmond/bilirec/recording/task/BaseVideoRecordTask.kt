@@ -9,7 +9,7 @@ import java.io.InputStream
 import java.time.Duration
 import kotlin.coroutines.coroutineContext
 
-abstract class BaseVideoRecordTask(room: Room):BaseRecordTask(room) {
+abstract class BaseVideoRecordTask(room: Room) : BaseRecordTask(room) {
     private val qnMap = mapOf(
         30000 to "杜比",
         20000 to "4K",
