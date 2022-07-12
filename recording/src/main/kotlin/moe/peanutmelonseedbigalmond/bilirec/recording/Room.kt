@@ -267,12 +267,12 @@ class Room(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onRecordingThreadExited(event: RecordingThreadExitedEvent) {
         if (event.room.roomConfig.roomId == this.roomConfig.roomId) {
+            if (!living || !autoRestart) return
+            if (!scope.isActive) return
             runBlocking(scope.coroutineContext) {
                 videoRecordTask?.close()
                 videoRecordTask = null
             }
-            if (!living || !autoRestart) return
-            if (!scope.isActive) return
             scope.launch {
                 try {
                     getRoomInfo()

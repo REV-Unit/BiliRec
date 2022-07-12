@@ -81,23 +81,31 @@ class LiveStreamRepairContext(
                 if (this@LiveStreamRepairContext.flvWriter == null) return@launch
 
                 while (isActive) {
-                    val tag = flvTagReader?.readNextTagAsync() ?: break
-                    processChain.startProceed(tag)
+                    try {
+                        writeLock.lock()
+                        val tag = flvTagReader?.readNextTagAsync() ?: break
+                        processChain.startProceed(tag)
+                    } finally {
+                        withContext(NonCancellable) {
+                            writeLock.unlock()
+                        }
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
             } finally {
+                withContext(NonCancellable){
+                    this@LiveStreamRepairContext.flvTagReader?.close()
+                    this@LiveStreamRepairContext.flvTagReader = null
+                    this@LiveStreamRepairContext.flvWriter?.close()
+                    this@LiveStreamRepairContext.flvWriter = null
 
-                this@LiveStreamRepairContext.flvTagReader?.close()
-                this@LiveStreamRepairContext.flvTagReader = null
-                this@LiveStreamRepairContext.flvWriter?.close()
-                this@LiveStreamRepairContext.flvWriter = null
+                    EventBus.getDefault().post(RecordingThreadExitedEvent(this@LiveStreamRepairContext.room))
 
-                EventBus.getDefault().post(RecordingThreadExitedEvent(this@LiveStreamRepairContext.room))
-
-                logger.info("录制结束")
+                    logger.info("录制结束")
+                }
             }
         }
     }
