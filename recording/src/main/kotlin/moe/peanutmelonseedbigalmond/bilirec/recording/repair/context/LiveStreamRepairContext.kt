@@ -81,17 +81,14 @@ class LiveStreamRepairContext(
                 if (this@LiveStreamRepairContext.flvWriter == null) return@launch
 
                 while (isActive) {
-                    writeLock.lock()
                     val tag = flvTagReader?.readNextTagAsync() ?: break
                     processChain.startProceed(tag)
-                    writeLock.unlock()
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
             } finally {
-                if (writeLock.isLocked) writeLock.unlock()
 
                 this@LiveStreamRepairContext.flvTagReader?.close()
                 this@LiveStreamRepairContext.flvTagReader = null
