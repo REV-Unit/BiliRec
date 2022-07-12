@@ -107,7 +107,7 @@ class Room(
         scope.launch {
             danmakuClient = DanmakuTcpClient(this@Room.roomId, scope.coroutineContext)
             refreshRoomInfo()
-            launch { connectToDanmakuServer() }
+            launch { connectToDanmakuServer(false) }
             updateRoomInfoJob = createUpdateRoomInfoJob()
             updateRoomInfoJob!!.start()
         }
