@@ -6,7 +6,6 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagFlag
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.AudioData
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.BaseTagData
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.ScriptData
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.VideoData
 import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
 import moe.peanutmelonseedbigalmond.bilirec.flv.toInt

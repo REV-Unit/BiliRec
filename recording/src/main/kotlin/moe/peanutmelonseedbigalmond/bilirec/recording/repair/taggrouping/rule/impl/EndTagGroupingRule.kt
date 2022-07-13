@@ -6,7 +6,7 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.Ba
 
 // EndTag 单独一个组
 class EndTagGroupingRule : BaseTagGroupingRule() {
-    override fun canStartWith(tag: Tag): Boolean=tag.isEndTag()
+    override fun canStartWith(tag: Tag): Boolean = tag.isEndTag()
 
     override fun canContinueWith(tag: Tag, previousTags: List<Tag>): Boolean = false
 }

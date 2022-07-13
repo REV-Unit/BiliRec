@@ -15,7 +15,7 @@ fun generateFileName(room: Room, offsetDateTime: OffsetDateTime = OffsetDateTime
             time.second
         )
     return formatFileName(
-        room.roomConfig.roomId,
+        room.roomId,
         date,
         t,
         offsetDateTime.nano.toString(),

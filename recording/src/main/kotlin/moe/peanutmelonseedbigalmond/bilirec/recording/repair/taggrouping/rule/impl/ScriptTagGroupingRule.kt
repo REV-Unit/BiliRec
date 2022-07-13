@@ -6,7 +6,7 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.Ba
 
 // ScriptTag单独一个组
 class ScriptTagGroupingRule : BaseTagGroupingRule() {
-    override fun canStartWith(tag: Tag): Boolean =tag.isScriptTag()
+    override fun canStartWith(tag: Tag): Boolean = tag.isScriptTag()
 
     override fun canContinueWith(tag: Tag, previousTags: List<Tag>): Boolean = false
 }

@@ -55,12 +55,12 @@ object CommandProcessor {
         }
         for (roomConfig in rooms) {
             val room = Room(roomConfig, coroutineContext)
-            Recording.INSTANCE.registerTaskAsync(room)
+            Recording.registerTaskAsync(room)
         }
 
         Runtime.getRuntime().addShutdownHook(object : Thread() {
             override fun run() {
-                runBlocking { Recording.INSTANCE.unregisterAllTasksAsync() }
+                runBlocking { Recording.unregisterAllTasksAsync() }
                 LoggingFactory.getLogger().info("System Exited")
             }
         })

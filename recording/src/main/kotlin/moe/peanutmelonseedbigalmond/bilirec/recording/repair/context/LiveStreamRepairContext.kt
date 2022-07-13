@@ -1,6 +1,8 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.repair.context
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.sync.Mutex
+import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.FrameType
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.reader.FlvTagReader
@@ -31,7 +33,7 @@ class LiveStreamRepairContext(
     coroutineContext: CoroutineContext
 ) : SuspendableCloseable, CoroutineScope by CoroutineScope(coroutineContext) {
     private val logger = LoggingFactory.getLogger(room.roomConfig.roomId, this)
-    private val writeLock = Object()
+    private val writeLock = Mutex()
     private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     @Volatile
@@ -42,12 +44,6 @@ class LiveStreamRepairContext(
 
     @Volatile
     private lateinit var previousScriptTag: Tag
-
-    @Volatile
-    private var splitRequired = false
-
-    @Volatile
-    private var splitCount = 0
 
     @Volatile
     private var flvWriter: FlvTagWriter? = null
@@ -64,19 +60,15 @@ class LiveStreamRepairContext(
             .addProcessNode(TagTimestampProcessNode(this@LiveStreamRepairContext.logger))
             .addProcessNode(TagDataProcessNode(this@LiveStreamRepairContext.logger))
             .collect(this@LiveStreamRepairContext::writeTag)
-        this@LiveStreamRepairContext.flvWriteJob = createFlvWriteJob()
+        launch { this@LiveStreamRepairContext.flvWriteJob = createFlvWriteJob() }
     }
 
     override suspend fun close() {
         if (closed) return
         closed = true
-        this.flvWriteJob?.cancelAndJoin()
-        this.flvWriteJob = null
-        synchronized(writeLock) {
-            this.flvTagReader?.close()
-            this.flvTagReader = null
-            this.flvWriter?.close()
-            this.flvWriter = null
+        writeLock.withReentrantLock {
+            this.flvWriteJob?.cancelAndJoin()
+            this.flvWriteJob = null
             scope.cancel()
         }
     }
@@ -84,18 +76,36 @@ class LiveStreamRepairContext(
     private fun createFlvWriteJob(): Job {
         return scope.launch {
             logger.info("开始接收直播流")
-            while (isActive) {
-                try {
-                    val tag = flvTagReader?.readNextTagAsync() ?: break
-                    processChain.startProceed(tag)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
+            try {
+                if (this@LiveStreamRepairContext.flvTagReader == null) return@launch
+                if (this@LiveStreamRepairContext.flvWriter == null) return@launch
+
+                while (isActive) {
+                    try {
+                        writeLock.lock()
+                        val tag = flvTagReader?.readNextTagAsync() ?: break
+                        processChain.startProceed(tag)
+                    } finally {
+                        withContext(NonCancellable) {
+                            writeLock.unlock()
+                        }
+                    }
                 }
-            }
-            withContext(NonCancellable) {
-                EventBus.getDefault().post(RecordingThreadExitedEvent(this@LiveStreamRepairContext.room))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
+            } finally {
+                withContext(NonCancellable){
+                    this@LiveStreamRepairContext.flvTagReader?.close()
+                    this@LiveStreamRepairContext.flvTagReader = null
+                    this@LiveStreamRepairContext.flvWriter?.close()
+                    this@LiveStreamRepairContext.flvWriter = null
+
+                    EventBus.getDefault().post(RecordingThreadExitedEvent(this@LiveStreamRepairContext.room))
+
+                    logger.info("录制结束")
+                }
             }
         }
     }

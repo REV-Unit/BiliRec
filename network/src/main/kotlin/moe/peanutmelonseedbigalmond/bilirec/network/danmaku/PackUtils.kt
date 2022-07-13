@@ -34,7 +34,6 @@ internal object PackUtils {
     private fun parseDecompressedDanmakuData(byteArray: ByteArray): ArrayList<DanmakuModel> {
         val res = arrayListOf<DanmakuModel>()
         val stream = ByteArrayInputStream(byteArray)
-        stream.available()
         while (stream.available() > 0) {
             val data = DanmakuMessageData()
             var bytes = stream.readNBytes(16)

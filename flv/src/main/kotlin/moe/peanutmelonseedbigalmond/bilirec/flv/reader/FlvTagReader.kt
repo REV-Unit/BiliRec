@@ -48,7 +48,7 @@ class FlvTagReader(
         }
     }
 
-    suspend fun readNextTagAsync(): Tag? = withContext(coroutineContext){
+    suspend fun readNextTagAsync(): Tag? = withContext(coroutineContext) {
         if (closed) return@withContext null
         if (!this@FlvTagReader.fileHeader) {
             val t = try {
@@ -76,7 +76,7 @@ class FlvTagReader(
     /**
      * 读取 9 字节的 flv 文件头
      */
-    private suspend fun parseFileHeaderAsync(stream: InputStream): Boolean = withContext(coroutineContext){
+    private suspend fun parseFileHeaderAsync(stream: InputStream): Boolean = withContext(coroutineContext) {
         readLock.withLock {
             val buffer = withContext(Dispatchers.IO) { stream.readNBytes(9) }
             if (buffer.size < 9) return@withContext false
@@ -97,7 +97,7 @@ class FlvTagReader(
      * @throws IOException
      */
     @Throws(IOException::class)
-    private suspend fun parseTagDataAsync(inputStream: InputStream): Tag? = withContext(coroutineContext){
+    private suspend fun parseTagDataAsync(inputStream: InputStream): Tag? = withContext(coroutineContext) {
         readLock.withLock {
             withContext(Dispatchers.IO) { inputStream.skipNBytes(4) }// 跳过第一个无意义的 Tag
             val data = withContext(Dispatchers.IO) { inputStream.readNBytes(11) }

@@ -32,19 +32,19 @@ class TagGroupingProcessChain {
                 ruleCanHandlePreviousTag = findRuleCanStartWith(leftoverTag!!)
                     ?: throw UnsupportedOperationException("No rule can handle with this tag: $leftoverTag")
                 tagGroup.add(leftoverTag!!)
-                leftoverTag=null
+                leftoverTag = null
             }
-            if (ruleCanHandlePreviousTag==null){
+            if (ruleCanHandlePreviousTag == null) {
                 ruleCanHandlePreviousTag = findRuleCanStartWith(tag)
                     ?: throw UnsupportedOperationException("No rule can handle with this tag: $tag")
                 tagGroup.add(tag)
                 return@synchronized
-            }else{
-                if (ruleCanHandlePreviousTag!!.canContinueWith(tag,tagGroup)){
+            } else {
+                if (ruleCanHandlePreviousTag!!.canContinueWith(tag, tagGroup)) {
                     tagGroup.add(tag)
-                }else{
+                } else {
                     emit()
-                    leftoverTag=tag
+                    leftoverTag = tag
                 }
             }
         }
@@ -62,15 +62,17 @@ class TagGroupingProcessChain {
         }
     }
 
-    companion object{
-        val DEFAULT_RULE_CHAIN=TagGroupingProcessChain()
+    companion object {
+        val DEFAULT_RULE_CHAIN = TagGroupingProcessChain()
             .also {
-                it.rules.addAll(immutableListOf(
-                    ScriptTagGroupingRule(),
-                    EndTagGroupingRule(),
-                    HeaderTagGroupingRule(),
-                    GOPGroupingRule()
-                ))
+                it.rules.addAll(
+                    immutableListOf(
+                        ScriptTagGroupingRule(),
+                        EndTagGroupingRule(),
+                        HeaderTagGroupingRule(),
+                        GOPGroupingRule()
+                    )
+                )
             }
     }
 }
