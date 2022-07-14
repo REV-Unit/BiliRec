@@ -16,9 +16,10 @@ import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExitedEvent
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.TagGroupingProcessChain
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagDataProcessNode
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagTimestampProcessNode
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagTimestampOffsetProcessNode
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.UpdateTagTimestampProcessNode
 import org.greenrobot.eventbus.EventBus
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
@@ -47,7 +48,8 @@ class LiveStreamRepairContext(
 
     @Volatile
     private var flvWriter: FlvTagWriter? = null
-    private lateinit var processChain: FlvTagProcessChain<Tag>
+    private lateinit var processChain: FlvTagProcessChain<List<Tag>>
+    private lateinit var tagGroupChain: TagGroupingProcessChain
     private var flvWriteJob: Job? = null
 
     @Volatile
@@ -56,10 +58,12 @@ class LiveStreamRepairContext(
     suspend fun start() = withContext(scope.coroutineContext) {
         flvWriter = FlvTagWriter("$outputFileNamePrefix.flv")
         this@LiveStreamRepairContext.flvTagReader = FlvTagReader(inputStream, this@LiveStreamRepairContext.logger)
-        processChain = FlvTagProcessChain<Tag>()
-            .addProcessNode(TagTimestampProcessNode(this@LiveStreamRepairContext.logger))
-            .addProcessNode(TagDataProcessNode(this@LiveStreamRepairContext.logger))
-            .collect(this@LiveStreamRepairContext::writeTag)
+        processChain = FlvTagProcessChain<List<Tag>>()
+            .addProcessNode(TagTimestampOffsetProcessNode())
+            .addProcessNode(UpdateTagTimestampProcessNode())
+            .collect(this@LiveStreamRepairContext::writeTagGroup)
+        tagGroupChain = TagGroupingProcessChain.DEFAULT_RULE_CHAIN
+            .collect { processChain.startProceed(it) }
         launch { this@LiveStreamRepairContext.flvWriteJob = createFlvWriteJob() }
     }
 
@@ -84,7 +88,7 @@ class LiveStreamRepairContext(
                     try {
                         writeLock.lock()
                         val tag = flvTagReader?.readNextTagAsync() ?: break
-                        processChain.startProceed(tag)
+                        tagGroupChain.proceed(tag)
                     } finally {
                         withContext(NonCancellable) {
                             writeLock.unlock()
@@ -96,7 +100,7 @@ class LiveStreamRepairContext(
             } catch (e: Exception) {
                 EventBus.getDefault().post(RecordingThreadErrorEvent(this@LiveStreamRepairContext.room, e))
             } finally {
-                withContext(NonCancellable){
+                withContext(NonCancellable) {
                     this@LiveStreamRepairContext.flvTagReader?.close()
                     this@LiveStreamRepairContext.flvTagReader = null
                     this@LiveStreamRepairContext.flvWriter?.close()
@@ -108,6 +112,10 @@ class LiveStreamRepairContext(
                 }
             }
         }
+    }
+
+    private fun writeTagGroup(tags: List<Tag>) {
+        tags.forEach(::writeTag)
     }
 
     private fun writeTag(tag: Tag?) {
