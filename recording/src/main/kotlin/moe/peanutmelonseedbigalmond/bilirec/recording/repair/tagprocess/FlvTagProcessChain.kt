@@ -1,8 +1,9 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess
 
+import moe.peanutmelonseedbigalmond.bilirec.logging.BaseLogging
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.BaseFlvTagProcessNode
 
-class FlvTagProcessChain<R> {
+class FlvTagProcessChain<R>(val logger: BaseLogging) {
     private lateinit var collectAction: (R) -> Unit
     private var chainFirstNode: BaseFlvTagProcessNode<R>? = null
     private var chainLastNode: BaseFlvTagProcessNode<R>? = null

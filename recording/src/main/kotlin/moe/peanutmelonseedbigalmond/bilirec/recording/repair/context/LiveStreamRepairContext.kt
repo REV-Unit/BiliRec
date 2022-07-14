@@ -17,6 +17,10 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExitedEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.TagGroupingProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.EndTagGroupingRule
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.GOPGroupingRule
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.HeaderTagGroupingRule
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.ScriptTagGroupingRule
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagTimestampOffsetProcessNode
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.UpdateTagTimestampProcessNode
@@ -58,11 +62,15 @@ class LiveStreamRepairContext(
     suspend fun start() = withContext(scope.coroutineContext) {
         flvWriter = FlvTagWriter("$outputFileNamePrefix.flv")
         this@LiveStreamRepairContext.flvTagReader = FlvTagReader(inputStream, this@LiveStreamRepairContext.logger)
-        processChain = FlvTagProcessChain<List<Tag>>()
+        processChain = FlvTagProcessChain<List<Tag>>(this@LiveStreamRepairContext.logger)
             .addProcessNode(TagTimestampOffsetProcessNode())
             .addProcessNode(UpdateTagTimestampProcessNode())
             .collect(this@LiveStreamRepairContext::writeTagGroup)
-        tagGroupChain = TagGroupingProcessChain.DEFAULT_RULE_CHAIN
+        tagGroupChain = TagGroupingProcessChain(this@LiveStreamRepairContext.logger)
+            .addRule(ScriptTagGroupingRule())
+            .addRule(EndTagGroupingRule())
+            .addRule(HeaderTagGroupingRule())
+            .addRule(GOPGroupingRule())
             .collect { processChain.startProceed(it) }
         launch { this@LiveStreamRepairContext.flvWriteJob = createFlvWriteJob() }
     }

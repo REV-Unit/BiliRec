@@ -1,14 +1,10 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping
 
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
+import moe.peanutmelonseedbigalmond.bilirec.logging.BaseLogging
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.BaseTagGroupingRule
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.EndTagGroupingRule
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.GOPGroupingRule
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.HeaderTagGroupingRule
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.ScriptTagGroupingRule
-import okhttp3.internal.immutableListOf
 
-class TagGroupingProcessChain {
+class TagGroupingProcessChain(val logger: BaseLogging) {
     private lateinit var collectAction: (List<Tag>) -> Unit
     private val tagGroup: MutableList<Tag> by lazy { ArrayList() }
     private val rules: MutableList<BaseTagGroupingRule> by lazy { ArrayList() }
@@ -60,19 +56,5 @@ class TagGroupingProcessChain {
         } finally {
             tagGroup.clear()
         }
-    }
-
-    companion object {
-        val DEFAULT_RULE_CHAIN = TagGroupingProcessChain()
-            .also {
-                it.rules.addAll(
-                    immutableListOf(
-                        ScriptTagGroupingRule(),
-                        EndTagGroupingRule(),
-                        HeaderTagGroupingRule(),
-                        GOPGroupingRule()
-                    )
-                )
-            }
     }
 }
