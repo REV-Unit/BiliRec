@@ -25,7 +25,7 @@ class TagTimestampOffsetProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
     }
 
     // 判断 Tag 时间戳是否存在减小的情况
-    private fun tagTimestampDecrease(tag1: Tag, tag2: Tag): Boolean = tag1.getTimeStamp() < tag2.getTimeStamp()
+    private fun tagTimestampDecrease(tag1: Tag, tag2: Tag): Boolean = tag1.getTimeStamp() > tag2.getTimeStamp()
 
     private fun reduceOffsetRange(
         oldMaxOffset: Int,
@@ -64,7 +64,7 @@ class TagTimestampOffsetProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
         val abnormal = tag.anyTwoElementMeets(::tagTimestampDecrease)
 
         if (!abnormal) { // 如果所有的时间戳都是递增的，没有问题
-            return chain.emit(tag)
+            return next(chain, tag)
         }
 
         val audioTagList = tag.filter { it.getTagType() == TagType.AUDIO }
@@ -129,10 +129,10 @@ class TagTimestampOffsetProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
                         onValidOffset(chain, offset, tags)
                     }
                 } else {
-                    if (maxOffset != Int.MAX_VALUE) {
+                    return if (maxOffset != Int.MAX_VALUE) {
                         // 无效最小偏移，以最大偏移为准
                         offset = maxOffset - 1
-                        return onValidOffset(chain, offset, tags)
+                        onValidOffset(chain, offset, tags)
                     } else {
                         // 无效结果
                         onInvalidOffset()
@@ -152,7 +152,7 @@ class TagTimestampOffsetProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
                     it.setTimeStamp(it.getTimeStamp() + offset)
                 }
             }
-            return chain.emit(tags)
+            return next(chain, tags)
         }
     }
 

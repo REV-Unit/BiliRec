@@ -22,6 +22,7 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.im
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.HeaderTagGroupingRule
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.ScriptTagGroupingRule
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.ScriptTagNormalizeProcessNode
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagTimestampOffsetProcessNode
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.UpdateTagTimestampProcessNode
 import org.greenrobot.eventbus.EventBus
@@ -63,6 +64,7 @@ class LiveStreamRepairContext(
         flvWriter = FlvTagWriter("$outputFileNamePrefix.flv")
         this@LiveStreamRepairContext.flvTagReader = FlvTagReader(inputStream, this@LiveStreamRepairContext.logger)
         processChain = FlvTagProcessChain<List<Tag>>(this@LiveStreamRepairContext.logger)
+            .addProcessNode(ScriptTagNormalizeProcessNode())
             .addProcessNode(TagTimestampOffsetProcessNode())
             .addProcessNode(UpdateTagTimestampProcessNode())
             .collect(this@LiveStreamRepairContext::writeTagGroup)

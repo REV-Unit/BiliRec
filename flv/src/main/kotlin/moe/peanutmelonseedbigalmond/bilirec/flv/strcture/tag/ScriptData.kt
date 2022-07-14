@@ -84,8 +84,8 @@ class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> =
                     result
                 }
                 ScriptDataType.MOVE_CLIP -> throw Exception("MovieClip is not support")
-                ScriptDataType.NULL -> throw IllegalArgumentException("Script data is null")
-                ScriptDataType.UNDEFINED -> throw IllegalArgumentException("Script data undefined")
+                ScriptDataType.NULL -> ScriptDataNull()
+                ScriptDataType.UNDEFINED -> ScriptDataUndefined()
                 ScriptDataType.REFERENCE -> ScriptDataReference().also { it.value = inputStream.readInt16() }
                 ScriptDataType.ECMA_ARRAY -> {
                     val arraySize = inputStream.readInt32()

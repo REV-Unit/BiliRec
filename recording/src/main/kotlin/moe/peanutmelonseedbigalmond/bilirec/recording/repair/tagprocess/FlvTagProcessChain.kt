@@ -8,6 +8,9 @@ class FlvTagProcessChain<R>(val logger: BaseLogging) {
     private var chainFirstNode: BaseFlvTagProcessNode<R>? = null
     private var chainLastNode: BaseFlvTagProcessNode<R>? = null
 
+    // 用来存放各个节点产生的数据，以便在节点间共享
+    val nodeItems = mutableMapOf<Any, Any?>()
+
     fun addProcessNode(node: BaseFlvTagProcessNode<R>): FlvTagProcessChain<R> {
         if (chainFirstNode == null) {
             chainFirstNode = node
