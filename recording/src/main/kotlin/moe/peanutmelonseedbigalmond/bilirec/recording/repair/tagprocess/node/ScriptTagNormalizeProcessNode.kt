@@ -60,11 +60,14 @@ class ScriptTagNormalizeProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
         } else {
             chain.logger.warn("收到了重复的metaData数据")
 
-            val newTag = Tag().also {
-                it.setTagType(TagType.SCRIPT)
-                it.data = data
-            }
-            return next(chain, mutableListOf(newTag))
+            // 当前的处理逻辑为：直接忽略掉新的 Script Tag
+            return
+
+//            val newTag = Tag().also {
+//                it.setTagType(TagType.SCRIPT)
+//                it.data = data
+//            }
+//            return next(chain, mutableListOf(newTag))
         }
     }
 
