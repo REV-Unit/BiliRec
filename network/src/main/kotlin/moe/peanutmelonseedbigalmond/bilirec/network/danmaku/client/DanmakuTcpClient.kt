@@ -41,8 +41,8 @@ class DanmakuTcpClient(
     private val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     companion object {
-        // 心跳包的间隔时间，默认为60秒
-        private const val HEARTBEAT_INTERVAL = 60 * 1000
+        // 心跳包的间隔时间，默认为 30 秒
+        private const val HEARTBEAT_INTERVAL = 30 * 1000
     }
 
     suspend fun connect() {
@@ -56,7 +56,7 @@ class DanmakuTcpClient(
                 // 设置socket的超时时间，在两倍心跳包长度的时间内必定能收到或者发送数据
                 // 超过这个时间则认为网络超时
                 socket = Socket()
-                socket?.soTimeout = HEARTBEAT_INTERVAL * 2 + 1000
+                socket?.soTimeout = HEARTBEAT_INTERVAL * 2 + 10000
                 withContext(Dispatchers.IO) {
                     socket?.connect(
                         InetSocketAddress(danmakuAddress, danmakuServerPort),
