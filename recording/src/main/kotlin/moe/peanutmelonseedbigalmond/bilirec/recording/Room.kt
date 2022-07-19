@@ -293,19 +293,21 @@ class Room(
     // region 定时刷新直播间信息
     private fun createUpdateRoomInfoJob(): Job {
         return scope.launch(start = CoroutineStart.LAZY) {
-            launch { connectToDanmakuServer() }
-            try {
-                getRoomInfo()
-                if (this@Room.living && this@Room.enabledAutoRecord && this@Room.autoRestart) {
-                    launch { createRecordTaskAndStart() }
+            while (isActive){
+                launch { connectToDanmakuServer() }
+                try {
+                    getRoomInfo()
+                    if (this@Room.living && this@Room.enabledAutoRecord && this@Room.autoRestart) {
+                        launch { createRecordTaskAndStart() }
+                    }
+                    delay(60 * 1000)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    logger.debug("获取直播间信息时出现异常：${e.localizedMessage}")
+                    logger.debug(e.stackTraceToString())
+                    delay(60 * 1000)
                 }
-                delay(60 * 1000)
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                logger.debug("获取直播间信息时出现异常：${e.localizedMessage}")
-                logger.debug(e.stackTraceToString())
-                delay(60 * 1000)
             }
         }
     }
