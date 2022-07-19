@@ -317,7 +317,6 @@ class Room(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onLiveStart(event: DanmakuEvents.LiveStartEvent) {
         if (event.roomId == this.roomConfig.roomId) {
-            if (event.danmakuModel.liveTime != 0L) return
             logger.info("直播开始")
             living = true
         }
