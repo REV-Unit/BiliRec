@@ -30,4 +30,8 @@ fun Tag.isDataTag(): Boolean {
 fun Tag.isKeyframeData(): Boolean {
     return this.getTagType() == TagType.VIDEO && (this.data as VideoData).frameType == FrameType.KEY_FRAME
 }
+
+fun Tag.notKeyframeData(): Boolean {
+    return (this.getTagType() == TagType.VIDEO) && (this.data as VideoData).frameType != FrameType.KEY_FRAME
+}
 // endregion

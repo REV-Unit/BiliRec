@@ -5,7 +5,7 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.getTagFlag
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.isDataTag
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.isKeyframeData
+import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.notKeyframeData
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.BaseTagGroupingRule
 
 /**
@@ -14,7 +14,7 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.Ba
 class GOPGroupingRule : BaseTagGroupingRule() {
     override fun canStartWith(tag: Tag): Boolean = tag.isDataTag()
 
-    override fun canContinueWith(tag: Tag, previousTags: List<Tag>): Boolean = !tag.isKeyframeData()
+    override fun canContinueWith(tag: Tag, previousTags: List<Tag>): Boolean = tag.notKeyframeData()
             || (
             tag.getTagType() == TagType.AUDIO
                     && tag.getTagFlag() == TagFlag.HEADER
