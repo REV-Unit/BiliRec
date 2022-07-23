@@ -25,18 +25,9 @@ abstract class BaseVideoRecordTask(room: Room) : BaseRecordTask(room) {
     protected lateinit var liveStream: InputStream
 
     protected open suspend fun createLiveStreamRepairContext(requireDelay: Boolean = false) {
-        while (coroutineContext.isActive) {
-            try {
-                if (requireDelay) delay(1000)
-                val (fullUrl, _) = getLiveStreamAddress()
-                liveStream = getLiveStream(fullUrl, Duration.ofSeconds(10))
-                break
-            } catch (e: Exception) {
-                logger.error("获取直播流出错：${e.localizedMessage}")
-                logger.debug(e.stackTraceToString())
-                logger.info("重新获取直播流")
-            }
-        }
+        if (requireDelay) delay(1000)
+        val (fullUrl, _) = getLiveStreamAddress()
+        liveStream = getLiveStream(fullUrl, Duration.ofSeconds(10))
     }
 
     // region 获取直播流
