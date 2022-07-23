@@ -8,6 +8,7 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import org.apache.commons.cli.*
 import java.io.File
 import kotlin.coroutines.coroutineContext
+import kotlin.system.exitProcess
 
 object CommandProcessor {
     private val cliParser = DefaultParser()
@@ -50,8 +51,8 @@ object CommandProcessor {
     private suspend fun appStart(configRoot: ConfigRoot) {
         val rooms = configRoot.roomConfigs ?: emptyList()
         if (rooms.isEmpty()) {
-            LoggingFactory.getLogger().warn("No rooms configured")
-            return
+            LoggingFactory.getLogger().warn("No rooms are configured, exiting.")
+            exitProcess(-1)
         }
         for (roomConfig in rooms) {
             val room = Room(roomConfig, coroutineContext)
