@@ -1,14 +1,13 @@
 package moe.peanutmelonseedbigalmond.bilirec.config
 
-import com.esotericsoftware.yamlbeans.YamlReader
+import com.charleskorn.kaml.Yaml
+import com.charleskorn.kaml.decodeFromStream
 import java.io.File
-import java.io.FileReader
 
 object ConfigReader {
     fun readConfig(file: File): ConfigRoot {
-        val yamlReader = YamlReader(FileReader(file))
-        val configRoot = yamlReader.read(ConfigRoot::class.java)
-        yamlReader.close()
-        return configRoot
+        return file.inputStream().use {
+            Yaml.default.decodeFromStream(it)
+        }
     }
 }

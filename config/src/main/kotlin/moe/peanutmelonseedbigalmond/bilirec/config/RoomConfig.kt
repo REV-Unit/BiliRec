@@ -1,5 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.config
 
+@kotlinx.serialization.Serializable
 class RoomConfig {
     @Volatile
     var roomId: Long = 0

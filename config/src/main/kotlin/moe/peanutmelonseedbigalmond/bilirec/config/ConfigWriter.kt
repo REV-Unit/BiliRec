@@ -1,16 +1,16 @@
 package moe.peanutmelonseedbigalmond.bilirec.config
 
-import com.esotericsoftware.yamlbeans.YamlConfig
-import com.esotericsoftware.yamlbeans.YamlWriter
+import com.charleskorn.kaml.Yaml
+import com.charleskorn.kaml.YamlConfiguration
+import com.charleskorn.kaml.encodeToStream
 import java.io.File
-import java.io.FileWriter
 
 object ConfigWriter {
+    private val yamlConfig = YamlConfiguration()
+    private val yaml = Yaml(configuration = yamlConfig)
     fun write(config: ConfigRoot, file: File) {
-        val writer = YamlWriter(FileWriter(file))
-        writer.config.setPropertyElementType(ConfigRoot::class.java, "roomConfigs", RoomConfig::class.java)
-        writer.config.writeConfig.setWriteClassname(YamlConfig.WriteClassName.NEVER)
-        writer.write(config)
-        writer.close()
+        file.outputStream().use {
+            yaml.encodeToStream(config, it)
+        }
     }
 }

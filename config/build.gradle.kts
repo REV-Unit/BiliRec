@@ -6,6 +6,10 @@ tasks.jar {
     enabled = true
 }
 
+plugins{
+    kotlin("plugin.serialization")
+}
+
 dependencies {
-    implementation("com.esotericsoftware.yamlbeans:yamlbeans:1.15")
+    implementation("com.charleskorn.kaml:kaml:0.46.0")
 }

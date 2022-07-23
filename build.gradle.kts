@@ -6,6 +6,7 @@ plugins {
     id("org.springframework.boot") version "3.0.0-M3"
     id("io.spring.dependency-management") version "1.0.11.RELEASE"
     kotlin("plugin.spring") version "1.6.21"
+    kotlin("plugin.serialization") version "1.6.20"
 }
 
 group = "moe.peanutmelonseedbigalmond"
