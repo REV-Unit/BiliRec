@@ -12,7 +12,6 @@ import java.io.File
 
 object ConfigProcessor {
     const val DEFAULT_CONFIG_FILE_NAME = "config.yaml"
-    const val CURRENT_CONFIG_VERSION = 1
 
     private lateinit var curConfig: ConfigRoot
     private lateinit var curConfigFile: File
