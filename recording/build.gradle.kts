@@ -1,3 +1,6 @@
+repositories {
+    mavenCentral()
+}
 tasks.bootJar {
     enabled = false
 }
@@ -12,4 +15,5 @@ dependencies {
     implementation(project(":logging"))
     implementation(project(":flv"))
     implementation(project(":common"))
+    implementation("org.glassfish.jaxb:txw2:4.0.0")
 }

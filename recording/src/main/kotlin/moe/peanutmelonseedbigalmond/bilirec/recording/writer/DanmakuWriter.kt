@@ -1,5 +1,6 @@
 package moe.peanutmelonseedbigalmond.bilirec.recording.writer
 
+import com.sun.xml.txw2.output.IndentingXMLStreamWriter
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.data.DanmakuModel
 import moe.peanutmelonseedbigalmond.bilirec.network.danmaku.enum.DanmakuCommand
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
@@ -23,7 +24,7 @@ class DanmakuWriter(
     private var writeCount = 0
 
     init {
-        writer = XMLOutputFactory.newInstance().createXMLStreamWriter(outputStream, Charsets.UTF_8.name())
+        writer = IndentingXMLStreamWriter(XMLOutputFactory.newInstance().createXMLStreamWriter(outputStream, Charsets.UTF_8.name()))
         writer.writeStartDocument()
         writer.writeProcessingInstruction("xml-stylesheet", """type="text/xsl" href="#s"""")
         /******<i>******/
