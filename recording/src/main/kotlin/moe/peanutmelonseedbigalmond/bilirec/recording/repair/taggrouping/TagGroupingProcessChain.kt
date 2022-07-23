@@ -9,7 +9,6 @@ class TagGroupingProcessChain(val logger: BaseLogging) {
     private val tagGroup: MutableList<Tag> by lazy { ArrayList() }
     private val rules: MutableList<BaseTagGroupingRule> by lazy { ArrayList() }
     private var leftoverTag: Tag? = null
-    private val processLock = Object()
     private var ruleCanHandlePreviousTag: BaseTagGroupingRule? = null
 
     fun addRule(rule: BaseTagGroupingRule): TagGroupingProcessChain {
@@ -23,25 +22,23 @@ class TagGroupingProcessChain(val logger: BaseLogging) {
     }
 
     fun proceed(tag: Tag) {
-        synchronized(processLock) {
-            if (leftoverTag != null) {
-                ruleCanHandlePreviousTag = findRuleCanStartWith(leftoverTag!!)
-                    ?: throw UnsupportedOperationException("No rule can handle with this tag: $leftoverTag")
-                tagGroup.add(leftoverTag!!)
-                leftoverTag = null
-            }
-            if (ruleCanHandlePreviousTag == null) {
-                ruleCanHandlePreviousTag = findRuleCanStartWith(tag)
-                    ?: throw UnsupportedOperationException("No rule can handle with this tag: $tag")
+        if (leftoverTag != null) {
+            ruleCanHandlePreviousTag = findRuleCanStartWith(leftoverTag!!)
+                ?: throw UnsupportedOperationException("No rule can handle with this tag: $leftoverTag")
+            tagGroup.add(leftoverTag!!)
+            leftoverTag = null
+        }
+        if (ruleCanHandlePreviousTag == null) {
+            ruleCanHandlePreviousTag = findRuleCanStartWith(tag)
+                ?: throw UnsupportedOperationException("No rule can handle with this tag: $tag")
+            tagGroup.add(tag)
+            return
+        } else {
+            if (ruleCanHandlePreviousTag!!.canContinueWith(tag, tagGroup)) {
                 tagGroup.add(tag)
-                return@synchronized
             } else {
-                if (ruleCanHandlePreviousTag!!.canContinueWith(tag, tagGroup)) {
-                    tagGroup.add(tag)
-                } else {
-                    emit()
-                    leftoverTag = tag
-                }
+                emit()
+                leftoverTag = tag
             }
         }
     }
