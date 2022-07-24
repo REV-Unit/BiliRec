@@ -27,14 +27,14 @@ Java17 运行环境，[下载地址](https://jdk.java.net/archive/)
 完整的启动命令
 
 ```shell
-java --add-opens java.xml/com.sun.xml.internal.stream.writers=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED -Dlog4j.skipJansi=false -jar <Jar名称> -c /work/dir/path
+java --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED -Dlog4j.skipJansi=false -jar <Jar名称> -c /work/dir/path
 ```
 
 #### 命令说明
 
 1. 因 Java9 及之后对反射操作有限制，所以需要添加 JVM 启动参数
 
-   `--add-opens java.xml/com.sun.xml.internal.stream.writers=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED`
+   `--add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED`
 
 2. 控制台会打印日志，如果需要开启颜色显示。则还需要添加 JVM 参数
 
@@ -90,6 +90,8 @@ version: 1
 #### 备注
 
 程序运行后会自动处理配置文件，包括：
+
+- 自动补全所有字段
 
 - 自动删除里面的注释，因此请不要在里面留下任何注释
 
