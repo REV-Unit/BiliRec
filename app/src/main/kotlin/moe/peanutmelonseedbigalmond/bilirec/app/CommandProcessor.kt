@@ -1,6 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.app
 
 import kotlinx.coroutines.runBlocking
+import moe.peanutmelonseedbigalmond.bilirec.WorkingContext
 import moe.peanutmelonseedbigalmond.bilirec.config.ConfigRoot
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Recording
@@ -39,7 +40,8 @@ object CommandProcessor {
         }
         if (cli.hasOption("c")) {
             val configPath = cli.getOptionValue("c")
-            val configFile = File(configPath, ConfigProcessor.DEFAULT_CONFIG_FILE_NAME)
+            WorkingContext.workingDirectory = File(configPath)
+            val configFile = File(WorkingContext.workingDirectory, ConfigProcessor.DEFAULT_CONFIG_FILE_NAME)
             val configRoot = ConfigProcessor.loadConfig(configFile)
             appStart(configRoot)
             return
