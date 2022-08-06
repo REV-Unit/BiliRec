@@ -2,6 +2,7 @@ package moe.peanutmelonseedbigalmond.bilirec.recording
 
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
+import moe.peanutmelonseedbigalmond.bilirec.WorkingContext
 import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
 import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.events.RoomInfoRefreshEvent
@@ -202,6 +203,7 @@ class Room(
     private fun generateFileNameAndMkdir(): String {
         val startTime = OffsetDateTime.now()
         val baseDir = File(
+            WorkingContext.workingDirectory,
             removeIllegalChar(
                 "${this.roomId}-${this.userName}"
             )
@@ -293,7 +295,7 @@ class Room(
     // region 定时刷新直播间信息
     private fun createUpdateRoomInfoJob(): Job {
         return scope.launch(start = CoroutineStart.LAZY) {
-            while (isActive){
+            while (isActive) {
                 launch { connectToDanmakuServer() }
                 try {
                     getRoomInfo()
