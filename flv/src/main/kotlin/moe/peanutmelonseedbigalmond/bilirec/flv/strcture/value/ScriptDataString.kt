@@ -1,5 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value
 
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.XmlElement
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.xmlElement
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
 import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
 import java.io.OutputStream
@@ -21,6 +23,12 @@ class ScriptDataString : BaseScriptDataValue() {
             )
         )
         stream.write(bytes)
+    }
+
+    override fun dataToXmlElement(): XmlElement {
+        return xmlElement("ScriptDataString"){
+            text(value)
+        }
     }
 
     override fun toString(): String {

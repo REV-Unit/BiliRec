@@ -14,7 +14,12 @@ class XmlElementBuilder(val name: String) {
         children.add(XmlElementBuilder(name).apply(builder).build())
     }
 
+    fun child(child: XmlElement) {
+        children.add(child)
+    }
+
     fun text(text: String) {
+        if (text.isEmpty()) return
         children.add(XmlElement.Text(text))
     }
 
@@ -25,4 +30,8 @@ class XmlElementBuilder(val name: String) {
         element.children = children
         return element
     }
+}
+
+inline fun xmlElement(name: String, builder: XmlElementBuilder.() -> Unit): XmlElement {
+    return XmlElementBuilder(name).apply(builder).build()
 }

@@ -1,42 +1,36 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value
 
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.XmlElement
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.xmlElement
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
 import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
 import java.io.OutputStream
 import kotlin.math.abs
 
-class KeyframesObject(map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHashMap()) :
-    ScriptDataObject(map) {
-    init {
-        val timesArray = ScriptDataStrictArray()
-        val filePosArray = ScriptDataStrictArray()
+class KeyframesObject : BaseScriptDataValue() {
+    override val type: ScriptDataType
+        get() = ScriptDataType.OBJECT
+    private val timesArray = ScriptDataStrictArray<ScriptDataNumber>()
+    private val filePosArray = ScriptDataStrictArray<ScriptDataNumber>()
 
-        map[KEY_TIMES] = timesArray
-        map[KEY_FILE_POSITIONS] = filePosArray
-//        map[KEY_SPACER]=ScriptDataStrictArray(LinkedList(MutableList(MAX_KEYFRAME_COUNT*2){ScriptDataNumber.assignValueNan()}))
-    }
+    override fun writeTo(outputStream: OutputStream) {
+        outputStream.write(byteArrayOf(this.type.value.toByte()))
 
-    override fun writeTo(stream: OutputStream) {
-        val timesArray = this[KEY_TIMES]!! as ScriptDataStrictArray
-        val filePositionsArray = this[KEY_FILE_POSITIONS]!! as ScriptDataStrictArray
+        writeKey(outputStream, KEY_TIMES)
+        writeStrictArray(outputStream, timesArray)
 
-        stream.write(byteArrayOf(this.type.value.toByte()))
-
-        writeKey(stream, KEY_TIMES)
-        writeStrictArray(stream, timesArray)
-
-        writeKey(stream, KEY_FILE_POSITIONS)
-        writeStrictArray(stream, filePositionsArray)
+        writeKey(outputStream, KEY_FILE_POSITIONS)
+        writeStrictArray(outputStream, filePosArray)
 
         val count = (MAX_KEYFRAME_COUNT - timesArray.size) * 2
-        writeKey(stream, KEY_SPACER)
-        stream.write(byteArrayOf(ScriptDataType.STRICT_ARRAY.value.toByte()))
-        stream.write(count.toByteArray())
+        writeKey(outputStream, KEY_SPACER)
+        outputStream.write(byteArrayOf(ScriptDataType.STRICT_ARRAY.value.toByte()))
+        outputStream.write(count.toByteArray())
         repeat(count) {
-            ScriptDataNumber.assignValueNan().writeTo(stream)
+            ScriptDataNumber.assignValueNan().writeTo(outputStream)
         }
 
-        stream.write(byteArrayOf(0, 0, 9))
+        outputStream.write(byteArrayOf(0, 0, 9))
     }
 
     private fun writeKey(outputStream: OutputStream, key: String) {
@@ -48,23 +42,34 @@ class KeyframesObject(map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHa
         outputStream.write(bytes)
     }
 
-    private fun writeStrictArray(outputStream: OutputStream, array: ScriptDataStrictArray) {
+    private fun writeStrictArray(outputStream: OutputStream, array: ScriptDataStrictArray<*>) {
         array.writeTo(outputStream)
     }
 
+    override fun dataToXmlElement(): XmlElement {
+        return xmlElement("Keyframes") {
+            attribute("count", timesArray.toString())
+            for (i in timesArray.indices) {
+                val t = timesArray[i]
+                val pos = filePosArray[i]
+                xmlElement("Item") {
+                    attribute("Time", t.value.toString())
+                    attribute("Position", pos.value.toString())
+                }
+            }
+        }
+    }
+
     fun addKeyframe(keyframeTimeMillisecond: Double, keyframePosition: Long) {
-        if ((this[KEY_TIMES]!! as ScriptDataStrictArray).size >= MAX_KEYFRAME_COUNT) return
-        val previousTime = ((this[KEY_TIMES]!! as ScriptDataStrictArray).lastOrNull() as ScriptDataNumber?)?.value
+        if (timesArray.size >= MAX_KEYFRAME_COUNT) return
+        val previousTime = timesArray.lastOrNull()?.value
             ?: Double.NEGATIVE_INFINITY
         if (abs(keyframeTimeMillisecond - previousTime) < MAX_INTERVAL) {
             return
         } else {
-            (this[KEY_TIMES]!! as ScriptDataStrictArray).add(ScriptDataNumber.assign(keyframeTimeMillisecond / 1000.0))
-            (this[KEY_FILE_POSITIONS]!! as ScriptDataStrictArray).add(ScriptDataNumber.assign(keyframePosition.toDouble()))
+            timesArray.add(ScriptDataNumber.assign(keyframeTimeMillisecond / 1000.0))
+            filePosArray.add(ScriptDataNumber.assign(keyframePosition.toDouble()))
         }
-//        repeat(2){
-//            (this[KEY_SPACER]!!as ScriptDataStrictArray).removeLast()
-//        }
     }
 
     companion object {

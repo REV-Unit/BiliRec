@@ -1,12 +1,10 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture
 
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.XmlElement
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.xmlElement
 import moe.peanutmelonseedbigalmond.bilirec.flv.Writeable
-import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.FrameType
-import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagFlag
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.AudioData
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.BaseTagData
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.VideoData
 import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
 import moe.peanutmelonseedbigalmond.bilirec.flv.toInt
 import struct.StructClass
@@ -80,6 +78,16 @@ class Tag : Writeable {
         )
         outputStream.write(bytes)
         outputStream.write((bytes.size + 11).toByteArray()) // 每个Tag块最后的长度包含Tag头的长度，所以此处加上Tag头的长度（11字节）
+    }
+
+    override fun dataToXmlElement(): XmlElement {
+        return xmlElement("Tag") {
+            attribute("tagType", getTagType().toString())
+            attribute("timestamp", getTimeStamp().toString())
+            attribute("streamId", getStreamId().toString())
+            attribute("tagIndex", tagIndex.toString())
+            child(data.dataToXmlElement())
+        }
     }
 
     companion object {
