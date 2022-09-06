@@ -4,15 +4,15 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import moe.peanutmelonseedbigalmond.bilirec.coroutine.withReentrantLock
 import moe.peanutmelonseedbigalmond.bilirec.flv.reader.FlvTagReader
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
 import moe.peanutmelonseedbigalmond.bilirec.flv.writer.BaseFlvTagWriter
 import moe.peanutmelonseedbigalmond.bilirec.interfaces.SuspendableCloseable
 import moe.peanutmelonseedbigalmond.bilirec.logging.BaseLogging
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
+import moe.peanutmelonseedbigalmond.bilirec.recording.TagGroup
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadErrorEvent
 import moe.peanutmelonseedbigalmond.bilirec.recording.events.RecordingThreadExitedEvent
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.TagGroupingProcessChain
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.TagGroupingRuleChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagGroupProcessChain
 import org.greenrobot.eventbus.EventBus
 import java.io.InputStream
 import kotlin.coroutines.CoroutineContext
@@ -27,8 +27,8 @@ abstract class BaseLiveStreamProcessContext(
     protected var flvTagReader: FlvTagReader? = null
     protected var flvTagWriter: BaseFlvTagWriter? = null
     protected val scope = CoroutineScope(coroutineContext + SupervisorJob())
-    private lateinit var processChain: FlvTagProcessChain<List<Tag>>
-    private lateinit var tagGroupChain: TagGroupingProcessChain
+    protected lateinit var processChain: FlvTagGroupProcessChain
+    protected lateinit var tagGroupRule: TagGroupingRuleChain
 
     @Volatile
     protected var closed = false
@@ -37,8 +37,8 @@ abstract class BaseLiveStreamProcessContext(
     open suspend fun start() = withContext(scope.coroutineContext) {
         flvTagWriter = createFlvTagWriter()
         flvTagReader = createFlvTagReader()
-        processChain = createTagProcessChainWithoutAction().collect(::onTagGroupRead)
-        tagGroupChain = createTagGroupingProcessChainWithoutAction().collect { processChain.startProceed(it) }
+        tagGroupRule = createTagGroupingRule()
+        processChain = createTagProcessChain()
         scope.launch {
             flvTagReadJob = createFlvTagReadJob()
             if (!flvTagReadJob!!.isActive) {
@@ -49,9 +49,9 @@ abstract class BaseLiveStreamProcessContext(
 
     protected abstract fun createFlvTagWriter(): BaseFlvTagWriter
     protected abstract fun createFlvTagReader(): FlvTagReader
-    protected abstract fun createTagProcessChainWithoutAction(): FlvTagProcessChain<List<Tag>>
-    protected abstract fun createTagGroupingProcessChainWithoutAction(): TagGroupingProcessChain
-    protected abstract fun onTagGroupRead(tagGroup: List<Tag>)
+    protected abstract fun createTagProcessChain(): FlvTagGroupProcessChain
+    protected abstract fun createTagGroupingRule(): TagGroupingRuleChain
+    protected abstract fun onTagGroupRead(tagGroup: TagGroup)
 
     protected open fun createFlvTagReadJob(): Job {
         return scope.launch {
@@ -63,8 +63,9 @@ abstract class BaseLiveStreamProcessContext(
                 while (isActive) {
                     try {
                         writeLock.lock()
-                        val tag = flvTagReader?.readNextTagAsync() ?: break
-                        tagGroupChain.proceed(tag)
+                        processChain.readTagGroupList().forEach {
+                            onTagGroupRead(it)
+                        }
                     } finally {
                         withContext(NonCancellable) {
                             writeLock.unlock()
@@ -88,6 +89,11 @@ abstract class BaseLiveStreamProcessContext(
                 }
             }
         }
+    }
+
+    protected fun flvReadDataSource() = sequence {
+        val next = runBlocking { flvTagReader!!.readNextTagAsync() }
+        yield(next)
     }
 
     override suspend fun close() {

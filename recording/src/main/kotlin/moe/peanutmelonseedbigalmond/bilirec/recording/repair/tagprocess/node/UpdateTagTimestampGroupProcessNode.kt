@@ -4,12 +4,12 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagFlag
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.getTagFlag
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.TagGroup
 import kotlin.math.max
 
 // 修复时间戳跳变
 
-class UpdateTagTimestampProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
+class UpdateTagTimestampGroupProcessNode : BaseFlvTagGroupProcessNode() {
     companion object {
         private const val TS_STORE_KEY = "TimestampStoreKey"
         private const val JUMP_THRESHOLD = 50
@@ -23,40 +23,40 @@ class UpdateTagTimestampProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
         private const val VIDEO_DURATION_MAX = 50
     }
 
-    override fun proceed(chain: FlvTagProcessChain<List<Tag>>, tag: List<Tag>) {
-        if (tag[0].getTagType() == TagType.SCRIPT) {
+    override fun proceed(tagGroup: TagGroup) = sequence {
+        if (tagGroup[0].getTagType() == TagType.SCRIPT) {
             // Script Tag时间戳永远为 0
-            tag[0].setTimeStamp(0)
-            return next(chain, tag)
+            tagGroup[0].setTimeStamp(0)
+            return@sequence yield(tagGroup)
         }
 
-        if (tag.all { it.getTagFlag() == TagFlag.HEADER }) {
+        if (tagGroup.all { it.getTagFlag() == TagFlag.HEADER }) {
             // Header Tag 时间戳永远为 0
-            tag.forEach { it.setTimeStamp(0) }
-            return next(chain, tag)
+            tagGroup.forEach { it.setTimeStamp(0) }
+            return@sequence yield(tagGroup)
         }
 
-        val ts = (chain.nodeItems[TS_STORE_KEY] as TimeStampStore?) ?: TimeStampStore()
+        val ts = (belongsToChain.nodeItems[TS_STORE_KEY] as TimeStampStore?) ?: TimeStampStore()
 
-        val currentTimestamp = tag.first().getTimeStamp()
+        val currentTimestamp = tagGroup.first().getTimeStamp()
         val diff = currentTimestamp - ts.lastOriginalTimestamp
         if (diff < 0) {
-            chain.logger.trace("时间戳变小, current: $currentTimestamp, diff: $diff")
+            belongsToChain.logger.trace("时间戳变小, current: $currentTimestamp, diff: $diff")
             ts.currentOffset = currentTimestamp - ts.nextTimestampTarget
         } else if (diff > JUMP_THRESHOLD) {
-            chain.logger.trace("时间戳变化过大, current: $currentTimestamp, diff: $diff")
+            belongsToChain.logger.trace("时间戳变化过大, current: $currentTimestamp, diff: $diff")
             ts.currentOffset = currentTimestamp - ts.nextTimestampTarget
         }
 
-        ts.lastOriginalTimestamp = tag.last().getTimeStamp()
+        ts.lastOriginalTimestamp = tagGroup.last().getTimeStamp()
 
-        tag.forEach { it.setTimeStamp(it.getTimeStamp() - ts.currentOffset) }
+        tagGroup.forEach { it.setTimeStamp(it.getTimeStamp() - ts.currentOffset) }
 
-        ts.nextTimestampTarget = calculateNewTargetTimestamp(tag)
+        ts.nextTimestampTarget = calculateNewTargetTimestamp(tagGroup)
 
-        chain.nodeItems[TS_STORE_KEY] = ts
+        belongsToChain.nodeItems[TS_STORE_KEY] = ts
 
-        return next(chain, tag)
+        return@sequence yield(tagGroup)
     }
 
     private fun calculateNewTargetTimestamp(tags: List<Tag>): Int {

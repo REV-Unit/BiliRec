@@ -13,15 +13,15 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.writer.FlvTagWriter
 import moe.peanutmelonseedbigalmond.bilirec.logging.BaseLogging
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.TagGroupingProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.TagGroupingRuleChain
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.EndTagGroupingRule
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.GOPGroupingRule
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.HeaderTagGroupingRule
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.ScriptTagGroupingRule
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.ScriptTagNormalizeProcessNode
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagTimestampOffsetProcessNode
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.UpdateTagTimestampProcessNode
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagGroupProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.ScriptTagNormalizeGroupProcessNode
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.TagTimestampOffsetGroupProcessNode
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.UpdateTagTimestampGroupProcessNode
 import java.io.ByteArrayOutputStream
 import java.io.InputStream
 import java.util.*
@@ -52,19 +52,25 @@ class LiveStreamRepairContext(
         return FlvTagReader(inputStream, this.logger)
     }
 
-    override fun createTagProcessChainWithoutAction(): FlvTagProcessChain<List<Tag>> {
-        return FlvTagProcessChain<List<Tag>>(this@LiveStreamRepairContext.logger)
-            .addProcessNode(ScriptTagNormalizeProcessNode())
-            .addProcessNode(TagTimestampOffsetProcessNode())
-            .addProcessNode(UpdateTagTimestampProcessNode())
+    override fun createTagProcessChain(): FlvTagGroupProcessChain {
+        return FlvTagGroupProcessChain.Builder()
+            .addNode(ScriptTagNormalizeGroupProcessNode())
+            .addNode(TagTimestampOffsetGroupProcessNode())
+            .addNode(UpdateTagTimestampGroupProcessNode())
+            .setDataSource(tagGroupRule.proceed())
+            .setLogger(logger)
+            .build()
     }
 
-    override fun createTagGroupingProcessChainWithoutAction(): TagGroupingProcessChain {
-        return TagGroupingProcessChain(this@LiveStreamRepairContext.logger)
+    override fun createTagGroupingRule(): TagGroupingRuleChain {
+        return TagGroupingRuleChain.Builder()
             .addRule(ScriptTagGroupingRule())
             .addRule(EndTagGroupingRule())
             .addRule(HeaderTagGroupingRule())
             .addRule(GOPGroupingRule())
+            .setLogger(logger)
+            .setDataSource(flvReadDataSource())
+            .build()
     }
 
     override fun onTagGroupRead(tagGroup: List<Tag>) {

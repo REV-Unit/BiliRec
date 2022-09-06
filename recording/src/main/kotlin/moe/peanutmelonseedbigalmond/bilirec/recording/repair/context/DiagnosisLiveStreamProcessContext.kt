@@ -8,12 +8,13 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.writer.DiagnosisFlvTagWriter
 import moe.peanutmelonseedbigalmond.bilirec.logging.BaseLogging
 import moe.peanutmelonseedbigalmond.bilirec.logging.LoggingFactory
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.TagGroupingProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.TagGroupingRuleChain
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.EndTagGroupingRule
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.GOPGroupingRule
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.HeaderTagGroupingRule
 import moe.peanutmelonseedbigalmond.bilirec.recording.repair.taggrouping.rule.impl.ScriptTagGroupingRule
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagGroupProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node.NothingGroupProcessNode
 import java.io.InputStream
 import kotlin.coroutines.CoroutineContext
 
@@ -34,16 +35,22 @@ class DiagnosisLiveStreamProcessContext(
         return FlvTagReader(inputStream, logger)
     }
 
-    override fun createTagProcessChainWithoutAction(): FlvTagProcessChain<List<Tag>> {
-        return FlvTagProcessChain(logger)
+    override fun createTagProcessChain(): FlvTagGroupProcessChain {
+        return FlvTagGroupProcessChain.Builder()
+            .addNode(NothingGroupProcessNode())
+            .setDataSource(tagGroupRule.proceed())
+            .build()
     }
 
-    override fun createTagGroupingProcessChainWithoutAction(): TagGroupingProcessChain {
-        return TagGroupingProcessChain(this.logger)
+    override fun createTagGroupingRule(): TagGroupingRuleChain {
+        return TagGroupingRuleChain.Builder()
             .addRule(ScriptTagGroupingRule())
             .addRule(EndTagGroupingRule())
             .addRule(HeaderTagGroupingRule())
             .addRule(GOPGroupingRule())
+            .setLogger(logger)
+            .setDataSource(flvReadDataSource())
+            .build()
     }
 
     override fun onTagGroupRead(tagGroup: List<Tag>) {
