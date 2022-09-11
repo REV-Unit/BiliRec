@@ -4,12 +4,14 @@ import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagFlag
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.getTagFlag
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.middleware.Middleware
+import moe.peanutmelonseedbigalmond.bilirec.middleware.MiddlewareContext
+import moe.peanutmelonseedbigalmond.bilirec.middleware.MiddlewareNext
+import moe.peanutmelonseedbigalmond.bilirec.recording.TagGroup
 import kotlin.math.max
 
 // 修复时间戳跳变
-
-class UpdateTagTimestampProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
+class UpdateTagTimestampGroupProcessNode : Middleware<TagGroup> {
     companion object {
         private const val TS_STORE_KEY = "TimestampStoreKey"
         private const val JUMP_THRESHOLD = 50
@@ -23,40 +25,52 @@ class UpdateTagTimestampProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
         private const val VIDEO_DURATION_MAX = 50
     }
 
-    override fun proceed(chain: FlvTagProcessChain<List<Tag>>, tag: List<Tag>) {
-        if (tag[0].getTagType() == TagType.SCRIPT) {
+    override fun execute(context: MiddlewareContext<TagGroup, *>, next: MiddlewareNext) {
+        @Suppress("UNCHECKED_CAST")
+        val extra = context.extra as MutableMap<Any, Any>
+        val timestampStore = extra[TS_STORE_KEY] as TimeStampStore? ?: TimeStampStore()
+        extra[TS_STORE_KEY] = timestampStore
+        val tags = context.data
+
+        if (tags[0].getTagType() == TagType.SCRIPT) {
             // Script Tag时间戳永远为 0
-            tag[0].setTimeStamp(0)
-            return next(chain, tag)
+            tags[0].setTimeStamp(0)
+            return next.execute()
         }
 
-        if (tag.all { it.getTagFlag() == TagFlag.HEADER }) {
+        if (tags.all { it.getTagFlag() == TagFlag.HEADER }) {
             // Header Tag 时间戳永远为 0
-            tag.forEach { it.setTimeStamp(0) }
-            return next(chain, tag)
+            tags.forEach { it.setTimeStamp(0) }
+            timestampStore.reset()
+            return next.execute()
         }
 
-        val ts = (chain.nodeItems[TS_STORE_KEY] as TimeStampStore?) ?: TimeStampStore()
+        var currentTimestamp = tags[0].getTimeStamp()
 
-        val currentTimestamp = tag.first().getTimeStamp()
-        val diff = currentTimestamp - ts.lastOriginalTimestamp
-        if (diff < 0) {
-            chain.logger.trace("时间戳变小, current: $currentTimestamp, diff: $diff")
-            ts.currentOffset = currentTimestamp - ts.nextTimestampTarget
+        val isFirstChunk = timestampStore.firstChunk
+        if (isFirstChunk) {
+            // 第一段数据使用最小的时间戳作为基础偏移量
+            // 防止出现前几个 Tag 时间戳为负数的情况
+            timestampStore.firstChunk = false
+            currentTimestamp = tags.minOf { it.getTimeStamp() }
+        }
+
+        val diff = currentTimestamp - timestampStore.lastOriginalTimestamp
+
+        if (diff < -JUMP_THRESHOLD || isFirstChunk && (diff < 0)) {
+            context.logger.debug("时间戳变小, current=$currentTimestamp, diff=$diff")
+            timestampStore.currentOffset = currentTimestamp - timestampStore.nextTimestampTarget
         } else if (diff > JUMP_THRESHOLD) {
-            chain.logger.trace("时间戳变化过大, current: $currentTimestamp, diff: $diff")
-            ts.currentOffset = currentTimestamp - ts.nextTimestampTarget
+            context.logger.debug("时间戳变大, current=$currentTimestamp, diff=$diff")
+            timestampStore.currentOffset = currentTimestamp - timestampStore.nextTimestampTarget
         }
 
-        ts.lastOriginalTimestamp = tag.last().getTimeStamp()
+        timestampStore.lastOriginalTimestamp = tags.last().getTimeStamp()
 
-        tag.forEach { it.setTimeStamp(it.getTimeStamp() - ts.currentOffset) }
+        tags.forEach { it.setTimeStamp(it.getTimeStamp() - timestampStore.currentOffset) }
 
-        ts.nextTimestampTarget = calculateNewTargetTimestamp(tag)
-
-        chain.nodeItems[TS_STORE_KEY] = ts
-
-        return next(chain, tag)
+        timestampStore.nextTimestampTarget = this.calculateNewTargetTimestamp(tags)
+        return next.execute()
     }
 
     private fun calculateNewTargetTimestamp(tags: List<Tag>): Int {
@@ -106,8 +120,14 @@ class UpdateTagTimestampProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
         var nextTimestampTarget = 0
         var lastOriginalTimestamp = 0
         var currentOffset = 0
+        var firstChunk = false
+
+        init {
+            reset()
+        }
 
         fun reset() {
+            this.firstChunk = true
             this.currentOffset = 0
             this.lastOriginalTimestamp = 0
             this.nextTimestampTarget = 0

@@ -2,12 +2,21 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node
 
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
-import moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.FlvTagProcessChain
+import moe.peanutmelonseedbigalmond.bilirec.middleware.Middleware
+import moe.peanutmelonseedbigalmond.bilirec.middleware.MiddlewareContext
+import moe.peanutmelonseedbigalmond.bilirec.middleware.MiddlewareNext
+import moe.peanutmelonseedbigalmond.bilirec.recording.TagGroup
 import java.util.*
 
 // https://github.com/BililiveRecorder/BililiveRecorder/blob/dev/BililiveRecorder.Flv/Pipeline/Rules/UpdateTimestampOffsetRule.cs
-// 修复时间戳错位
-class TagTimestampOffsetProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
+/**
+ * 修复时间戳错位
+ * 似乎由于B站传回的数据第一个分块问题，此规则不再适用
+ * 新的处理逻辑在 [UpdateTagTimestampGroupProcessNode.execute] 中
+ */
+
+@Deprecated("This rule no longer applicable")
+class TagTimestampOffsetGroupProcessNode : Middleware<TagGroup> {
     // 判断指定列表中是否存在指定两个连续的元素符合指定的条件
     private inline fun <T> List<T>.anyTwoElementMeets(predicate: (element1: T, element2: T) -> Boolean): Boolean {
         if (this.isEmpty()) return false
@@ -60,15 +69,16 @@ class TagTimestampOffsetProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
         val newTags: MutableList<Tag>,
     )
 
-    override fun proceed(chain: FlvTagProcessChain<List<Tag>>, tag: List<Tag>) {
-        val abnormal = tag.anyTwoElementMeets(::tagTimestampDecrease)
+    override fun execute(context: MiddlewareContext<TagGroup, *>, next: MiddlewareNext) {
+        val tagGroup = context.data
+        val abnormal = tagGroup.anyTwoElementMeets(::tagTimestampDecrease)
 
         if (!abnormal) { // 如果所有的时间戳都是递增的，没有问题
-            return next(chain, tag)
+            return next.execute()
         }
 
-        val audioTagList = tag.filter { it.getTagType() == TagType.AUDIO }
-        val videoTagList = tag.filter { it.getTagType() == TagType.VIDEO }
+        val audioTagList = tagGroup.filter { it.getTagType() == TagType.AUDIO }
+        val videoTagList = tagGroup.filter { it.getTagType() == TagType.VIDEO }
         if (audioTagList.anyTwoElementMeets(::tagTimestampDecrease) || videoTagList.anyTwoElementMeets(::tagTimestampDecrease)) {
             // 音频/视频时间戳序列有问题
             throw Exception("Tag 时间戳序列异常")
@@ -89,7 +99,7 @@ class TagTimestampOffsetProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
             var minOffset: Int = Int.MIN_VALUE
             var maxOffset: Int = Int.MAX_VALUE
 
-            tag.forEach {
+            tagGroup.forEach {
                 when (it.getTagType()) {
                     TagType.AUDIO -> {
                         reduceOffsetRange(maxOffset, minOffset, lastAudioTag, it, tags).also { res ->
@@ -115,24 +125,35 @@ class TagTimestampOffsetProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
                 // 理想情况允许偏移范围只有一个值
                 offset = minOffset
 
-                return onValidOffset(chain, offset, tags)
+                context.data.clear()
+                context.data.addAll(onValidOffset(offset, tags).toList().flatten())
+                return next.execute()
             } else if (minOffset < maxOffset) {
                 // 允许偏移的值是一个范围
                 if (minOffset != Int.MAX_VALUE) {
-                    return if (maxOffset != Int.MIN_VALUE) {
+                    if (maxOffset != Int.MIN_VALUE) {
                         // 有一个有效范围，取平均值
                         offset = (minOffset + maxOffset) / 2
-                        onValidOffset(chain, offset, tags)
+
+                        context.data.clear()
+                        context.data.addAll(onValidOffset(offset, tags).toList().flatten())
+                        return next.execute()
                     } else {
                         // 无效最大偏移，以最小偏移为准
                         offset = minOffset + 1
-                        onValidOffset(chain, offset, tags)
+
+                        context.data.clear()
+                        context.data.addAll(onValidOffset(offset, tags).toList().flatten())
+                        return next.execute()
                     }
                 } else {
-                    return if (maxOffset != Int.MAX_VALUE) {
+                    if (maxOffset != Int.MAX_VALUE) {
                         // 无效最小偏移，以最大偏移为准
                         offset = maxOffset - 1
-                        onValidOffset(chain, offset, tags)
+
+                        context.data.clear()
+                        context.data.addAll(onValidOffset(offset, tags).toList().flatten())
+                        return next.execute()
                     } else {
                         // 无效结果
                         onInvalidOffset()
@@ -145,18 +166,21 @@ class TagTimestampOffsetProcessNode : BaseFlvTagProcessNode<List<Tag>>() {
         }
     }
 
-    private fun onValidOffset(chain: FlvTagProcessChain<List<Tag>>, offset: Int, tags: List<Tag>) {
+    private fun onValidOffset(
+        offset: Int,
+        tags: TagGroup
+    ) = sequence {
         if (offset != 0) {
             tags.forEach {
                 if (it.getTagType() == TagType.VIDEO) {
                     it.setTimeStamp(it.getTimeStamp() + offset)
                 }
             }
-            return next(chain, tags)
+            yield(tags)
         }
     }
 
     private fun onInvalidOffset(): Nothing {
-        throw IllegalArgumentException()
+        throw IllegalArgumentException("Invalid tag timestamp offset")
     }
 }
