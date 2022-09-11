@@ -22,8 +22,8 @@ class ScriptDataStrictArray<T : BaseScriptDataValue>(
     }
 
     override fun dataToXmlElement(): XmlElement {
-        return xmlElement("ScriptDataStrictArray"){
-            for (v in arrayList){
+        return xmlElement("ScriptDataStrictArray") {
+            for (v in arrayList) {
                 v.dataToXmlElement()
             }
         }

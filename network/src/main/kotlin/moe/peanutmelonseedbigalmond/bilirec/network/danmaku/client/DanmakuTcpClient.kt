@@ -212,7 +212,7 @@ class DanmakuTcpClient(
                 scope.launch {
                     try {
                         disconnect()
-                    }catch (e:CancellationException){
+                    } catch (e: CancellationException) {
                         throw e
                     } catch (_: Exception) {
                     }

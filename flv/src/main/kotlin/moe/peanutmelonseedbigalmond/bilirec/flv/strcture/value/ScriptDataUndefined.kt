@@ -14,7 +14,7 @@ class ScriptDataUndefined : BaseScriptDataValue() {
     }
 
     override fun dataToXmlElement(): XmlElement {
-        return xmlElement("ScriptDataUndefined"){
+        return xmlElement("ScriptDataUndefined") {
             text("Undefined")
         }
     }

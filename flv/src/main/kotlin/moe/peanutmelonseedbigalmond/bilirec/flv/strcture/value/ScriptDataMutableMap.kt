@@ -1,6 +1,5 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value
 
-import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.XmlElement
 import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
 import java.io.OutputStream
 

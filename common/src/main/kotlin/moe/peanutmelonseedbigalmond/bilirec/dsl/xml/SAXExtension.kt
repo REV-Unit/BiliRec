@@ -11,12 +11,12 @@ fun XMLStreamWriter.writeXmlElement(element: XmlElement) {
         this.writeStartElement(element.name)
     }
 
-    if (element.attributes.isNotEmpty()){
+    if (element.attributes.isNotEmpty()) {
         for (attr in element.attributes) {
             this.writeAttribute(attr.name, attr.value)
         }
     }
-    if (element.children.isNotEmpty()){
+    if (element.children.isNotEmpty()) {
         for (child in element.children) {
             when (child) {
                 is XmlElement.Element -> this.writeXmlElement(child)

@@ -20,7 +20,7 @@ class ScriptDataBoolean : BaseScriptDataValue() {
     }
 
     override fun dataToXmlElement(): XmlElement {
-        return xmlElement("ScriptDataBoolean"){
+        return xmlElement("ScriptDataBoolean") {
             text(value.toString())
         }
     }

@@ -5,7 +5,7 @@ import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.xmlElement
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
 import java.io.OutputStream
 
-class ScriptDataNull:BaseScriptDataValue() {
+class ScriptDataNull : BaseScriptDataValue() {
     override val type: ScriptDataType
         get() = ScriptDataType.NULL
 
@@ -14,7 +14,7 @@ class ScriptDataNull:BaseScriptDataValue() {
     }
 
     override fun dataToXmlElement(): XmlElement {
-        return xmlElement("ScriptDataNull"){
+        return xmlElement("ScriptDataNull") {
             text("null")
         }
     }

@@ -6,5 +6,5 @@ import java.io.OutputStream
 interface Writeable {
     fun writeTo(outputStream: OutputStream)
 
-    fun dataToXmlElement():XmlElement
+    fun dataToXmlElement(): XmlElement
 }

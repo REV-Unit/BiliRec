@@ -6,7 +6,7 @@ tasks.jar {
     enabled = true
 }
 
-plugins{
+plugins {
     kotlin("plugin.serialization")
 }
 

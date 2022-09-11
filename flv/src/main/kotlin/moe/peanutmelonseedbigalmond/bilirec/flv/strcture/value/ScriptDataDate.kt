@@ -33,7 +33,7 @@ class ScriptDataDate() : BaseScriptDataValue() {
     }
 
     override fun dataToXmlElement(): XmlElement {
-        return xmlElement("ScriptDataDate"){
+        return xmlElement("ScriptDataDate") {
             text(value.toString())
         }
     }

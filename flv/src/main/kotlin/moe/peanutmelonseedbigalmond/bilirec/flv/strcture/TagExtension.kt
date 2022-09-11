@@ -32,7 +32,7 @@ fun Tag.isKeyframeData(): Boolean {
 }
 
 fun Tag.notKeyframeData(): Boolean {
-    return this.getTagType()==TagType.AUDIO
+    return this.getTagType() == TagType.AUDIO
             || (this.getTagType() == TagType.VIDEO && (this.data as VideoData).frameType != FrameType.KEY_FRAME)
 }
 // endregion

@@ -2,8 +2,8 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.task
 
 import moe.peanutmelonseedbigalmond.bilirec.config.RoomConfig
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
-import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.DiagnosisRecordTask
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.DefaultRecordTask
+import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.DiagnosisRecordTask
 import moe.peanutmelonseedbigalmond.bilirec.recording.task.impl.StrandRecordTask
 import kotlin.coroutines.CoroutineContext
 

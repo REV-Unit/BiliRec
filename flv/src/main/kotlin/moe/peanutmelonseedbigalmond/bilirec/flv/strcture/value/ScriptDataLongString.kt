@@ -25,7 +25,7 @@ class ScriptDataLongString : BaseScriptDataValue() {
     }
 
     override fun dataToXmlElement(): XmlElement {
-        return xmlElement("ScriptDataLongString"){
+        return xmlElement("ScriptDataLongString") {
             text(value)
         }
     }

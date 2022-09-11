@@ -26,7 +26,7 @@ class ScriptDataNumber : BaseScriptDataValue() {
     }
 
     override fun dataToXmlElement(): XmlElement {
-        return xmlElement("ScriptDataNumber"){
+        return xmlElement("ScriptDataNumber") {
             text(value.toString())
         }
     }

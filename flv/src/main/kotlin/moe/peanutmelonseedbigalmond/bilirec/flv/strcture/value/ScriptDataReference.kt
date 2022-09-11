@@ -22,7 +22,7 @@ class ScriptDataReference : BaseScriptDataValue() {
     }
 
     override fun dataToXmlElement(): XmlElement {
-        return xmlElement("ScriptDataReference"){
+        return xmlElement("ScriptDataReference") {
             text(value.toString())
         }
     }
