@@ -13,13 +13,16 @@ class FlvTagWriter(private val randomAccessFile: RandomAccessFile) : BaseFlvTagW
 
     private val logger = LoggingFactory.getLogger(obj = this)
     private val writeLock = Object()
+    private var flvHeaderWritten = false
+    private var scriptTagWritten = false
 
     @Volatile
     private var closed = false
 
-    override fun writeFlvHeader() {
+    fun writeFlvHeader() {
         synchronized(writeLock) {
             if (closed) return
+            if (flvHeaderWritten) return
             randomAccessFile.seek(0)
             randomAccessFile.write(
                 byteArrayOf(0x46, 0x4C, 0x56, 0x01, 0x05, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00)
@@ -27,9 +30,10 @@ class FlvTagWriter(private val randomAccessFile: RandomAccessFile) : BaseFlvTagW
         }
     }
 
-    override fun writeFlvScriptTag(data: Tag) {
+    fun writeFlvScriptTag(data: Tag) {
         synchronized(writeLock) {
             if (closed) return
+
             if (data.getTagType() != TagType.SCRIPT && data.data !is ScriptData) {
                 logger.warn("Tag 不是 SCRIPT，忽略（类型： ${data.getTagType()}，数据类型： ${data.data.javaClass.simpleName}）")
                 return
@@ -42,9 +46,10 @@ class FlvTagWriter(private val randomAccessFile: RandomAccessFile) : BaseFlvTagW
         }
     }
 
-    override fun writeFlvData(data: Tag) {
+    fun writeFlvData(data: Tag) {
         synchronized(writeLock) {
             if (closed) return
+            writeFlvHeader()
             if (data.getTagType() != TagType.SCRIPT) {
                 this.randomAccessFile.seek(this.randomAccessFile.length())
                 val bos = ByteArrayOutputStream()
@@ -52,16 +57,18 @@ class FlvTagWriter(private val randomAccessFile: RandomAccessFile) : BaseFlvTagW
                 this.randomAccessFile.write(bos.toByteArray())
                 bos.close()
             } else {
-                logger.warn("写入直播数据中途遇到意外的Script数据块，忽略")
+                writeFlvScriptTag(data)
             }
         }
     }
 
     fun getFilePointer(): Long = synchronized(writeLock) { this.randomAccessFile.filePointer }
 
-    override fun getFileLength(): Long = synchronized(writeLock) { this.randomAccessFile.length() }
+    fun getFileLength(): Long = synchronized(writeLock) { this.randomAccessFile.length() }
 
-    fun flush() = synchronized(writeLock) { this.randomAccessFile.fd.sync() }
+    override fun writeTagGroup(tagGroup: List<Tag>) {
+        tagGroup.forEach(this::writeFlvData)
+    }
 
     override fun close() {
         synchronized(writeLock) {

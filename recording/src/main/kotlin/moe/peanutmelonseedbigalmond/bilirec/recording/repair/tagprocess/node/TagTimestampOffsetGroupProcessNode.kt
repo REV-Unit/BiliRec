@@ -2,12 +2,15 @@ package moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagprocess.node
 
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
+import moe.peanutmelonseedbigalmond.bilirec.middleware.Middleware
+import moe.peanutmelonseedbigalmond.bilirec.middleware.MiddlewareContext
+import moe.peanutmelonseedbigalmond.bilirec.middleware.MiddlewareNext
 import moe.peanutmelonseedbigalmond.bilirec.recording.TagGroup
 import java.util.*
 
 // https://github.com/BililiveRecorder/BililiveRecorder/blob/dev/BililiveRecorder.Flv/Pipeline/Rules/UpdateTimestampOffsetRule.cs
 // 修复时间戳错位
-class TagTimestampOffsetGroupProcessNode : BaseFlvTagGroupProcessNode() {
+class TagTimestampOffsetGroupProcessNode : Middleware<TagGroup> {
     // 判断指定列表中是否存在指定两个连续的元素符合指定的条件
     private inline fun <T> List<T>.anyTwoElementMeets(predicate: (element1: T, element2: T) -> Boolean): Boolean {
         if (this.isEmpty()) return false
@@ -60,12 +63,12 @@ class TagTimestampOffsetGroupProcessNode : BaseFlvTagGroupProcessNode() {
         val newTags: MutableList<Tag>,
     )
 
-
-    override fun proceed(tagGroup: TagGroup) = sequence<TagGroup> {
+    override fun execute(context: MiddlewareContext<TagGroup, *>, next: MiddlewareNext) {
+        val tagGroup = context.data
         val abnormal = tagGroup.anyTwoElementMeets(::tagTimestampDecrease)
 
         if (!abnormal) { // 如果所有的时间戳都是递增的，没有问题
-            return@sequence yield(tagGroup)
+            return next.execute()
         }
 
         val audioTagList = tagGroup.filter { it.getTagType() == TagType.AUDIO }
@@ -74,14 +77,6 @@ class TagTimestampOffsetGroupProcessNode : BaseFlvTagGroupProcessNode() {
             // 音频/视频时间戳序列有问题
             throw Exception("Tag 时间戳序列异常")
         } else {
-            /**
-             * 设定做调整的为视频帧，参照每个视频帧左右（左为前、右为后）的音频帧的时间戳
-             *
-             * 计算出最多和最少能符合“不小于前面的帧并且不大于后面的帧”的要求的偏移量
-             *
-             * 如果当前偏移量比总偏移量要求更严，则使用当前偏移量范围作为总偏移量范围
-             */
-
             /**
              * 设定做调整的为视频帧，参照每个视频帧左右（左为前、右为后）的音频帧的时间戳
              *
@@ -124,24 +119,35 @@ class TagTimestampOffsetGroupProcessNode : BaseFlvTagGroupProcessNode() {
                 // 理想情况允许偏移范围只有一个值
                 offset = minOffset
 
-                return@sequence yieldAll(onValidOffset(offset, tags))
+                context.data.clear()
+                context.data.addAll(onValidOffset(offset, tags).toList().flatten())
+                return next.execute()
             } else if (minOffset < maxOffset) {
                 // 允许偏移的值是一个范围
                 if (minOffset != Int.MAX_VALUE) {
                     if (maxOffset != Int.MIN_VALUE) {
                         // 有一个有效范围，取平均值
                         offset = (minOffset + maxOffset) / 2
-                       return@sequence yieldAll(onValidOffset(offset, tags))
+
+                        context.data.clear()
+                        context.data.addAll(onValidOffset(offset, tags).toList().flatten())
+                        return next.execute()
                     } else {
                         // 无效最大偏移，以最小偏移为准
                         offset = minOffset + 1
-                        return@sequence yieldAll(onValidOffset(offset, tags))
+
+                        context.data.clear()
+                        context.data.addAll(onValidOffset(offset, tags).toList().flatten())
+                        return next.execute()
                     }
                 } else {
                     if (maxOffset != Int.MAX_VALUE) {
                         // 无效最小偏移，以最大偏移为准
                         offset = maxOffset - 1
-                        return@sequence yieldAll(onValidOffset(offset, tags))
+
+                        context.data.clear()
+                        context.data.addAll(onValidOffset(offset, tags).toList().flatten())
+                        return next.execute()
                     } else {
                         // 无效结果
                         onInvalidOffset()
@@ -156,7 +162,7 @@ class TagTimestampOffsetGroupProcessNode : BaseFlvTagGroupProcessNode() {
 
     private fun onValidOffset(
         offset: Int,
-        tags: List<Tag>
+        tags: TagGroup
     ) = sequence {
         if (offset != 0) {
             tags.forEach {
@@ -169,6 +175,6 @@ class TagTimestampOffsetGroupProcessNode : BaseFlvTagGroupProcessNode() {
     }
 
     private fun onInvalidOffset(): Nothing {
-        throw IllegalArgumentException()
+        throw IllegalArgumentException("Invalid tag timestamp offset")
     }
 }

@@ -7,7 +7,7 @@ import kotlin.coroutines.CoroutineContext
 class DiagnosisRecordTask(
     room: Room,
     coroutineContext: CoroutineContext
-) : StrandRecordTask(room, coroutineContext) {
+) : DefaultRecordTask(room, coroutineContext) {
     override suspend fun setAndStartLiveStreamProcessContext(baseFileName: String) {
         liveStreamProcessContext = DiagnosisLiveStreamProcessContext(
             liveStream,

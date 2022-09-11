@@ -1,10 +1,9 @@
-package moe.peanutmelonseedbigalmond.bilirec.flv.writer
+package moe.peanutmelonseedbigalmond.bilirec.recording.repair.tagwriter
 
 import com.sun.xml.txw2.output.IndentingXMLStreamWriter
 import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.writeXmlElement
-import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.Tag
-import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag.ScriptData
+import moe.peanutmelonseedbigalmond.bilirec.flv.writer.BaseFlvTagWriter
 import java.io.FileOutputStream
 import javax.xml.stream.XMLOutputFactory
 
@@ -20,27 +19,19 @@ class DiagnosisFlvTagWriter(fileNameWithoutExtension: String) : BaseFlvTagWriter
         xmlWriter.writeStartElement("Flv")
     }
 
-    @Synchronized
-    override fun writeFlvHeader() {
-
+    override fun writeTagGroup(tagGroup: List<Tag>) {
+        xmlWriter.writeXmlElement("TagGroup") {
+            tagGroup.forEach(this@DiagnosisFlvTagWriter::writeFlvData)
+        }
     }
 
-    override fun writeFlvScriptTag(data: Tag) {
-        if (closed) return
-        if (data.getTagType() != TagType.SCRIPT) return
-        val tagData = data.data as ScriptData
-        xmlWriter.writeXmlElement(tagData.dataToXmlElement())
-    }
-
-    override fun writeFlvData(data: Tag) {
+    private fun writeFlvData(data: Tag) {
         xmlWriter.writeXmlElement(data.dataToXmlElement())
     }
 
-    override fun getFileLength(): Long {
-        return 0
-    }
-
     override fun close() {
+        if (closed) return
+        closed = true
         xmlWriter.writeEndElement()
         xmlWriter.close()
         fileOutputStream.close()

@@ -258,7 +258,7 @@ class Room(
     fun onRecordingThreadError(event: RecordingThreadErrorEvent) {
         if (event.room.roomConfig.roomId == this.roomConfig.roomId) {
             if (event.extra is Exception) {
-                logger.error("直播流修复时出现异常：${event.extra.localizedMessage ?: event.extra}")
+                logger.error("处理直播流时出现异常：${event.extra.localizedMessage ?: event.extra}")
                 logger.debug(event.extra.stackTraceToString())
             }
         }
