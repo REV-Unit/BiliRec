@@ -11,7 +11,6 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.TagGroup
 import kotlin.math.max
 
 // 修复时间戳跳变
-
 class UpdateTagTimestampGroupProcessNode : Middleware<TagGroup> {
     companion object {
         private const val TS_STORE_KEY = "TimestampStoreKey"
@@ -27,43 +26,50 @@ class UpdateTagTimestampGroupProcessNode : Middleware<TagGroup> {
     }
 
     override fun execute(context: MiddlewareContext<TagGroup, *>, next: MiddlewareNext) {
-        val tagGroup = context.data
-        if (tagGroup[0].getTagType() == TagType.SCRIPT) {
-            // Script Tag时间戳永远为 0
-            tagGroup[0].setTimeStamp(0)
-
-            return next.execute()
-        }
-
-        if (tagGroup.all { it.getTagFlag() == TagFlag.HEADER }) {
-            // Header Tag 时间戳永远为 0
-            tagGroup.forEach { it.setTimeStamp(0) }
-            return next.execute()
-        }
-
         @Suppress("UNCHECKED_CAST")
-        val nodeItems = context.extra as MutableMap<Any, Any>
+        val extra = context.extra as MutableMap<Any, Any>
+        val timestampStore = extra[TS_STORE_KEY] as TimeStampStore? ?: TimeStampStore()
+        extra[TS_STORE_KEY] = timestampStore
+        val tags = context.data
 
-        val ts = (nodeItems[TS_STORE_KEY] as TimeStampStore?) ?: TimeStampStore()
-
-        val currentTimestamp = tagGroup.first().getTimeStamp()
-        val diff = currentTimestamp - ts.lastOriginalTimestamp
-        if (diff < 0) {
-            context.logger.trace("时间戳变小, current: $currentTimestamp, diff: $diff")
-            ts.currentOffset = currentTimestamp - ts.nextTimestampTarget
-        } else if (diff > JUMP_THRESHOLD) {
-            context.logger.trace("时间戳变化过大, current: $currentTimestamp, diff: $diff")
-            ts.currentOffset = currentTimestamp - ts.nextTimestampTarget
+        if (tags[0].getTagType() == TagType.SCRIPT) {
+            // Script Tag时间戳永远为 0
+            tags[0].setTimeStamp(0)
+            return next.execute()
         }
 
-        ts.lastOriginalTimestamp = tagGroup.last().getTimeStamp()
+        if (tags.all { it.getTagFlag() == TagFlag.HEADER }) {
+            // Header Tag 时间戳永远为 0
+            tags.forEach { it.setTimeStamp(0) }
+            timestampStore.reset()
+            return next.execute()
+        }
 
-        tagGroup.forEach { it.setTimeStamp(it.getTimeStamp() - ts.currentOffset) }
+        var currentTimestamp = tags[0].getTimeStamp()
 
-        ts.nextTimestampTarget = calculateNewTargetTimestamp(tagGroup)
+        val isFirstChunk = timestampStore.firstChunk
+        if (isFirstChunk) {
+            // 第一段数据使用最小的时间戳作为基础偏移量
+            // 防止出现前几个 Tag 时间戳为负数的情况
+            timestampStore.firstChunk = false
+            currentTimestamp = tags.minOf { it.getTimeStamp() }
+        }
 
-        nodeItems[TS_STORE_KEY] = ts
+        val diff = currentTimestamp - timestampStore.lastOriginalTimestamp
 
+        if (diff < -JUMP_THRESHOLD || isFirstChunk && (diff < 0)) {
+            context.logger.debug("时间戳变小, current=$currentTimestamp, diff=$diff")
+            timestampStore.currentOffset = currentTimestamp - timestampStore.nextTimestampTarget
+        } else if (diff > JUMP_THRESHOLD) {
+            context.logger.debug("时间戳变大, current=$currentTimestamp, diff=$diff")
+            timestampStore.currentOffset = currentTimestamp - timestampStore.nextTimestampTarget
+        }
+
+        timestampStore.lastOriginalTimestamp = tags.last().getTimeStamp()
+
+        tags.forEach { it.setTimeStamp(it.getTimeStamp() - timestampStore.currentOffset) }
+
+        timestampStore.nextTimestampTarget = this.calculateNewTargetTimestamp(tags)
         return next.execute()
     }
 
@@ -114,8 +120,14 @@ class UpdateTagTimestampGroupProcessNode : Middleware<TagGroup> {
         var nextTimestampTarget = 0
         var lastOriginalTimestamp = 0
         var currentOffset = 0
+        var firstChunk = false
+
+        init {
+            reset()
+        }
 
         fun reset() {
+            this.firstChunk = true
             this.currentOffset = 0
             this.lastOriginalTimestamp = 0
             this.nextTimestampTarget = 0

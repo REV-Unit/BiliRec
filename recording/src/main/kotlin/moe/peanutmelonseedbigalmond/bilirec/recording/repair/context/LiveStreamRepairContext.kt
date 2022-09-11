@@ -22,7 +22,7 @@ class LiveStreamRepairContext(
 ) : DefaultStreamProcessContext(inputStream, room, outputFileNamePrefix, coroutineContext) {
     private val flvTagGroupProcessChain = MiddlewareBuilder<TagGroup>()
         .use(ScriptTagNormalizeGroupProcessNode())
-        .use(TagTimestampOffsetGroupProcessNode())
+//        .use(TagTimestampOffsetGroupProcessNode())
         .use(UpdateTagTimestampGroupProcessNode())
         .build()
     override val flvTagGroupingRuleBuilder: TagGroupingRuleChain.Builder

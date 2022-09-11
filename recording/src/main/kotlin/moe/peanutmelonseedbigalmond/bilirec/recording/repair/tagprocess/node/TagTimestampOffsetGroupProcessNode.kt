@@ -9,7 +9,13 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.TagGroup
 import java.util.*
 
 // https://github.com/BililiveRecorder/BililiveRecorder/blob/dev/BililiveRecorder.Flv/Pipeline/Rules/UpdateTimestampOffsetRule.cs
-// 修复时间戳错位
+/**
+ * 修复时间戳错位
+ * 似乎由于B站传回的数据第一个分块问题，此规则不再适用
+ * 新的处理逻辑在 [UpdateTagTimestampGroupProcessNode.execute] 中
+ */
+
+@Deprecated("This rule no longer applicable")
 class TagTimestampOffsetGroupProcessNode : Middleware<TagGroup> {
     // 判断指定列表中是否存在指定两个连续的元素符合指定的条件
     private inline fun <T> List<T>.anyTwoElementMeets(predicate: (element1: T, element2: T) -> Boolean): Boolean {
