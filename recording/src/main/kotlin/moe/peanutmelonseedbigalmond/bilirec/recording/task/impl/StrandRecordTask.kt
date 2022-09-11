@@ -15,22 +15,20 @@ import moe.peanutmelonseedbigalmond.bilirec.recording.task.BaseVideoRecordTask
 import org.greenrobot.eventbus.EventBus
 import kotlin.coroutines.CoroutineContext
 
-class StrandRecordTask(
+open class StrandRecordTask(
     room: Room,
     coroutineContext: CoroutineContext
 ) : BaseVideoRecordTask(room) {
     private val startAndStopLock = Mutex()
-    private val scope = CoroutineScope(coroutineContext + SupervisorJob())
+    protected val scope = CoroutineScope(coroutineContext + SupervisorJob())
 
     @Volatile
     private var started = false
 
     @Volatile
     private var mClosed = false
-    override val closed: Boolean = mClosed
-
-    @Volatile
-    private var repairContext: LiveStreamRepairContext? = null
+    override val closed: Boolean
+        get() = mClosed
 
     override suspend fun prepare() {
         // 准备时不需要做任何事
@@ -40,13 +38,17 @@ class StrandRecordTask(
         withContext(scope.coroutineContext) {
             if (started) return@withContext
             createLiveStreamRepairContext()
-            repairContext =
-                LiveStreamRepairContext(liveStream, room, baseFileName, this@StrandRecordTask.scope.coroutineContext)
-            repairContext!!.start()
+            setAndStartLiveStreamProcessContext(baseFileName)
             started = true
             EventBus.getDefault()
                 .post(RecordFileOpenedEvent(this@StrandRecordTask.room.roomConfig.roomId, baseFileName))
         }
+    }
+
+    open suspend fun setAndStartLiveStreamProcessContext(baseFileName: String) {
+        liveStreamProcessContext =
+            LiveStreamRepairContext(liveStream, room, baseFileName, this@StrandRecordTask.scope.coroutineContext)
+        liveStreamProcessContext!!.start()
     }
 
     override suspend fun stopRecording() = startAndStopLock.withReentrantLock {
@@ -54,8 +56,8 @@ class StrandRecordTask(
             if (!started) return@withContext
             started = false
             logger.info("停止接收直播流")
-            repairContext?.close()
-            repairContext = null
+            liveStreamProcessContext?.close()
+            liveStreamProcessContext = null
             EventBus.getDefault().post(RecordFileClosedEvent(this@StrandRecordTask.room.roomConfig.roomId))
         }
     }

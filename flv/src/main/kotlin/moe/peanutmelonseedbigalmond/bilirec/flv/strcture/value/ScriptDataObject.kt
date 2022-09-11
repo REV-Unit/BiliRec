@@ -1,32 +1,21 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value
 
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.XmlElement
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.xmlElement
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
-import moe.peanutmelonseedbigalmond.bilirec.flv.toByteArray
 import java.io.OutputStream
 
-open class ScriptDataObject(private val map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHashMap()) :
-    BaseScriptDataValue(),
-    Map<String, BaseScriptDataValue> by map {
+class ScriptDataObject(private val map: LinkedHashMap<String, BaseScriptDataValue> = LinkedHashMap()) :
+    ScriptDataMutableMap(map) {
     override val type: ScriptDataType
         get() = ScriptDataType.OBJECT
 
     fun toScriptDataEcmaArray(): ScriptDataEcmaArray = ScriptDataEcmaArray(this.map)
 
-    override fun writeTo(stream: OutputStream) {
-        stream.write(byteArrayOf(type.value.toByte()))
-
-        for ((k, v) in this) {
-            val bytes = k.toByteArray(Charsets.UTF_8)
-            if (bytes.size > 65535) {
-                throw Exception("Cannot write more than 65535 (actual: ${bytes.size}) into ScriptDataString")
-            }
-            stream.write(bytes.size.toShort().toByteArray())
-            stream.write(bytes)
-
-            v.writeTo(stream)
-        }
-
-        stream.write(byteArrayOf(0, 0, 9))
+    override fun writeTo(outputStream: OutputStream) {
+        outputStream.write(byteArrayOf(type.value.toByte()))
+        writeKVs(outputStream)
+        outputStream.write(byteArrayOf(0, 0, 9))
     }
 
     operator fun set(key: String, value: BaseScriptDataValue) {
@@ -35,6 +24,18 @@ open class ScriptDataObject(private val map: LinkedHashMap<String, BaseScriptDat
 
     operator fun set(key: ScriptDataString, value: BaseScriptDataValue) {
         this.map[key.value] = value
+    }
+
+    override fun dataToXmlElement(): XmlElement {
+        return xmlElement("ScriptDataObject") {
+            attribute("count", this@ScriptDataObject.size.toString())
+            for ((k, v) in this@ScriptDataObject) {
+                child("Item") {
+                    attribute("key", k)
+                    child(v.dataToXmlElement())
+                }
+            }
+        }
     }
 
     override fun toString(): String {

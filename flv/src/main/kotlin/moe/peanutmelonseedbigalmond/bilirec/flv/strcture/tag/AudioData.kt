@@ -1,5 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag
 
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.XmlElement
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.xmlElement
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagFlag
 import java.io.OutputStream
 
@@ -27,6 +29,16 @@ class AudioData private constructor() : BaseTagData() {
                 "bitrate=$bitrate, " +
                 "bit=$bit, " +
                 "stereo=$stereo)"
+    }
+
+    override fun dataToXmlElement(): XmlElement {
+        return xmlElement("AudioData") {
+            attribute("tagFlag", tagFlag.toString())
+            attribute("audioFormat", audioFormat.toString())
+            attribute("bitrate", bitrate.toString())
+            attribute("bit", bit.toString())
+            attribute("stereo", stereo.toString())
+        }
     }
 
     companion object {

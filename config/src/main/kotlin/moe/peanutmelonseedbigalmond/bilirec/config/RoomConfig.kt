@@ -33,6 +33,7 @@ class RoomConfig {
     var recordMode: Int = RecordMode.STRAND
 
     object RecordMode {
+        const val DIAGNOSIS=-1
         const val STRAND = 0
         const val RAW = 1
     }

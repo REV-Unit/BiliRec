@@ -7,7 +7,8 @@ tasks.jar {
 }
 
 dependencies {
-    implementation("cn.hutool:hutool-core:5.7.21")
     implementation(fileTree("../lib"))
     implementation(project(":logging"))
+    implementation("org.glassfish.jaxb:txw2:4.0.0")
+    implementation(project(":common"))
 }

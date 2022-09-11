@@ -1,5 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag
 
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.XmlElement
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.xmlElement
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.FrameType
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.TagFlag
 import java.io.OutputStream
@@ -21,6 +23,14 @@ class VideoData private constructor() : BaseTagData() {
 
     override fun toString(): String {
         return "VideoData(binaryData size=${binaryData.size}, frameType=$frameType, codecId=$codecId, tagFlag=$tagFlag)"
+    }
+
+    override fun dataToXmlElement(): XmlElement {
+        return xmlElement("VideoData") {
+            attribute("frameType", tagFlag.toString())
+            attribute("codecId", codecId.toString())
+            attribute("tagFlag", tagFlag.toString())
+        }
     }
 
     companion object {

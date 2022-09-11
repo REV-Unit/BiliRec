@@ -5,11 +5,15 @@ import kotlinx.coroutines.isActive
 import moe.peanutmelonseedbigalmond.bilirec.network.api.BiliApiClient
 import moe.peanutmelonseedbigalmond.bilirec.recording.Room
 import moe.peanutmelonseedbigalmond.bilirec.recording.extension.getCodecItemInStreamUrlAsync
+import moe.peanutmelonseedbigalmond.bilirec.recording.repair.context.BaseLiveStreamProcessContext
 import java.io.InputStream
 import java.time.Duration
 import kotlin.coroutines.coroutineContext
 
 abstract class BaseVideoRecordTask(room: Room) : BaseRecordTask(room) {
+    @Volatile
+    protected var liveStreamProcessContext: BaseLiveStreamProcessContext? = null
+
     private val qnMap = mapOf(
         30000 to "杜比",
         20000 to "4K",

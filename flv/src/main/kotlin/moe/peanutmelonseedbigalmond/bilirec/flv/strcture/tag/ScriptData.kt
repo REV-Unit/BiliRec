@@ -1,5 +1,7 @@
 package moe.peanutmelonseedbigalmond.bilirec.flv.strcture.tag
 
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.XmlElement
+import moe.peanutmelonseedbigalmond.bilirec.dsl.xml.xmlElement
 import moe.peanutmelonseedbigalmond.bilirec.flv.enumration.ScriptDataType
 import moe.peanutmelonseedbigalmond.bilirec.flv.strcture.value.*
 import moe.peanutmelonseedbigalmond.bilirec.flv.toDouble
@@ -11,7 +13,9 @@ import java.io.InputStream
 import java.io.OutputStream
 import java.util.*
 
-class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> = LinkedList()) : BaseTagData() {
+class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> = LinkedList()) :
+    BaseTagData(),
+    MutableList<BaseScriptDataValue> by list {
     override lateinit var binaryData: ByteArray
 
     init {
@@ -30,15 +34,6 @@ class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> =
             return bos.size().toLong()
         }
 
-    val size: Int
-        get() = this.list.size
-
-    operator fun get(index: Int) = this.list[index]
-
-    operator fun set(index: Int, data: BaseScriptDataValue) {
-        this.list[index] = data
-    }
-
     override fun writeTo(outputStream: OutputStream) {
         for (l in list) {
             l.writeTo(outputStream)
@@ -47,6 +42,14 @@ class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> =
 
     override fun toString(): String {
         return "ScriptData(data=$list, binaryData size=${binaryData.size})"
+    }
+
+    override fun dataToXmlElement(): XmlElement {
+        return xmlElement("ScriptData") {
+            for (ch in this@ScriptData) {
+                child(ch.dataToXmlElement())
+            }
+        }
     }
 
     companion object {
@@ -93,7 +96,7 @@ class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> =
                     for (i in 0 until arraySize) {
                         val propertyName = readScriptDataString(inputStream, true) ?: break
                         val propertyData = parseValue(inputStream)
-                        result[propertyName] = propertyData
+                        result[propertyName.value] = propertyData
                     }
                     val endMarker = ScriptDataType.fromValue(byteArrayOf(0, *inputStream.readNBytes(3)).toInt())
                     assert(endMarker == ScriptDataType.OBJECT_END_MARKER)
@@ -102,7 +105,7 @@ class ScriptData constructor(private val list: LinkedList<BaseScriptDataValue> =
                 ScriptDataType.OBJECT_END_MARKER -> throw Exception("Read ObjectEndMarker")
                 ScriptDataType.STRICT_ARRAY -> {
                     val length = inputStream.readInt32()
-                    val res = ScriptDataStrictArray()
+                    val res = ScriptDataStrictArray<BaseScriptDataValue>()
                     for (i in 0 until length) {
                         val v = parseValue(inputStream)
                         res.add(v)
