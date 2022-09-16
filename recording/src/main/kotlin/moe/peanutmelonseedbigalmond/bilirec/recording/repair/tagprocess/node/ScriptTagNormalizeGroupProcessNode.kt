@@ -24,13 +24,21 @@ class ScriptTagNormalizeGroupProcessNode : Middleware<TagGroup> {
             val data = t.data as ScriptData
 
             if (data.size == 2 && (data[0] is ScriptDataString) && (data[0] as ScriptDataString).value == "onMetaData") {
-                context.data.clear()
-                context.data.addAll(onMetaData(t, context).toList())
-                return next.execute()
+                val proceedList = onMetaData(t, context).toList()
+                if (proceedList.isNotEmpty()) {
+                    context.data.clear()
+                    context.data.addAll(proceedList)
+                    return next.execute()
+                }
+                return
             } else if (data.size == 3 && data[2] is ScriptDataNull && data[0] is ScriptDataString && (data[0] as ScriptDataString).value == "onMetaData") {
-                context.data.clear()
-                context.data.addAll(onMetaData(t, context))
-                return next.execute()
+                val proceedList = onMetaData(t, context).toList()
+                if (proceedList.isNotEmpty()) {
+                    context.data.clear()
+                    context.data.addAll(proceedList)
+                    return next.execute()
+                }
+                return
             } else {
                 return next.execute()
             }
