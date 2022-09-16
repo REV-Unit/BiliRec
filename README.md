@@ -16,6 +16,18 @@
 
 ## 使用
 
+### 写在前面
+
+本项目还处在早期开发阶段，部分功能并不是很成熟，暂不提供 Release 下载
+
+如有需要，可以前往 Actions 页面下载最新的 CI 构建
+
+或者 clone 项目源代码，运行以下命令以自行编译，编译产物为 `app/build/libs/app.jar`
+
+```shell
+./gradlw app:bootJar
+```
+
 ### 先决条件
 
 Java17 运行环境，[下载地址](https://jdk.java.net/archive/)
