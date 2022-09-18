@@ -34,7 +34,9 @@ class LiveStreamRepairContext(
         RepairFlvTagWriter(room.roomId, FlvTagWriter("${outputFileNamePrefix}.flv"))
 
     override fun onTagGroupReceived(tagGroup: TagGroup) {
-        flvTagGroupProcessChain(MiddlewareContext(tagGroup, flvTagGroupProcessChainExtraData))
+        val ctx = MiddlewareContext(tagGroup, flvTagGroupProcessChainExtraData)
+        ctx.logger = this.logger
+        flvTagGroupProcessChain(ctx)
         super.onTagGroupReceived(tagGroup)
     }
 }
