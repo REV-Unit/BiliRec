@@ -1,10 +1,10 @@
 name: Kotlin CI
 
 on:
+  workflow_dispatch:
   push:
     branches: [ "master" ]
   pull_request:
-    branches: [ "master" ]
 
 permissions:
   contents: read
@@ -12,6 +12,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
     steps:
       - name: Get current time
         uses: 1466587594/get-current-time@v2
