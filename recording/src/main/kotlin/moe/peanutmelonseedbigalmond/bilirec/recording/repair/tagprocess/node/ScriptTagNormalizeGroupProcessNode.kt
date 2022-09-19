@@ -23,22 +23,16 @@ class ScriptTagNormalizeGroupProcessNode : Middleware<TagGroup> {
         if (t.getTagType() == TagType.SCRIPT) {
             val data = t.data as ScriptData
 
+            // TODO: 当重复收到onMetaData的时候，会在之后的处理节点抛出越界异常，强行中断当前录制，使录播文件分段
+            // TODO: 应采用更友好的方式分段
             if (data.size == 2 && (data[0] is ScriptDataString) && (data[0] as ScriptDataString).value == "onMetaData") {
-                val proceedList = onMetaData(t, context).toList()
-                if (proceedList.isNotEmpty()) {
-                    context.data.clear()
-                    context.data.addAll(proceedList)
-                    return next.execute()
-                }
-                return
+                context.data.clear()
+                context.data.addAll(onMetaData(t, context).toList())
+                return next.execute()
             } else if (data.size == 3 && data[2] is ScriptDataNull && data[0] is ScriptDataString && (data[0] as ScriptDataString).value == "onMetaData") {
-                val proceedList = onMetaData(t, context).toList()
-                if (proceedList.isNotEmpty()) {
-                    context.data.clear()
-                    context.data.addAll(proceedList)
-                    return next.execute()
-                }
-                return
+                context.data.clear()
+                context.data.addAll(onMetaData(t, context).toList())
+                return next.execute()
             } else {
                 return next.execute()
             }
