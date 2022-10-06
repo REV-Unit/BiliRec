@@ -3,5 +3,5 @@ package moe.peanutmelonseedbigalmond.bilirec
 import java.io.File
 
 object WorkingContext {
-    lateinit var workingDirectory: File
+    var workingDirectory: File = File(System.getProperty("user.dir"))
 }
