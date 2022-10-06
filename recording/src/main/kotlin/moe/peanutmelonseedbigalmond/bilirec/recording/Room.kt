@@ -390,6 +390,7 @@ class Room(
     @Subscribe(threadMode = ThreadMode.ASYNC)
     fun onRecordFileOpened(event: RecordFileOpenedEvent) {
         if (event.roomId == this.roomId) {
+            logger.info("新建录制文件：${event.baseFileName}")
             danmakuWriter = DanmakuWriter(this, event.baseFileName)
         }
     }
@@ -399,6 +400,7 @@ class Room(
         if (event.roomId == this.roomId) {
             this.danmakuWriter?.close()
             this.danmakuWriter = null
+            logger.info("录制结束")
         }
     }
     // endregion
